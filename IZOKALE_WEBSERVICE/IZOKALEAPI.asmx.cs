@@ -1,0 +1,2433 @@
+﻿using IZOKALE_WEBSERVICE.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.Linq;
+using System.Web;
+using System.Web.Services;
+
+namespace IZOKALE_WEBSERVICE
+{
+    /// <summary>
+    /// Summary description for IZOKALEAPI
+    /// </summary>
+    [WebService(Namespace = "http://tempuri.org/")]
+    [WebServiceBinding(ConformsTo = WsiProfiles.BasicProfile1_1)]
+    [System.ComponentModel.ToolboxItem(false)]
+    // To allow this Web Service to be called from script, using ASP.NET AJAX, uncomment the following line. 
+    // [System.Web.Script.Services.ScriptService]
+    public class IZOKALEAPI : System.Web.Services.WebService
+    {
+
+        string IzoKaleFirmaNo = "";
+        string IzoKaleDonemNo = "";
+        public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
+        public string SecurityCode = "7c2dc0ef-8337-4638-858d-6cca15fc167d";
+        public string LbsLoadSecurityCode = "0BGEMM9CKC5IAT8S81NND5SLZ8";
+        static UnityObjects.UnityApplication obj;
+
+
+        public IZOKALEAPI()
+        {
+            if (obj==null)
+            {
+                obj = new UnityObjects.UnityApplication();
+            }
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdMalzemeler = new SqlCommand();
+                cmdMalzemeler.Connection = con;
+                cmdMalzemeler.CommandText = "select * from IZOKALE_PARAMETRELER";
+                SqlDataReader rdMalzemeler = cmdMalzemeler.ExecuteReader();
+                while (rdMalzemeler.Read())
+                {
+                    if (rdMalzemeler["ParametreAdi"].ToString() == "FirmaNo")
+                    {
+                        IzoKaleFirmaNo = rdMalzemeler["ParametreDegeri"].ToString();
+                    }
+                    if (rdMalzemeler["ParametreAdi"].ToString() == "DönemNo")
+                    {
+                        IzoKaleDonemNo = rdMalzemeler["ParametreDegeri"].ToString();
+                    }
+
+                }
+            }
+
+        }
+
+        [WebMethod]
+        public string login()
+        {
+            
+            obj.Login("LOGOFLOW", "1234", 121);
+            if (obj.LoggedIn)
+            {
+                obj.Disconnect();
+                return "bağlantı başarılı";
+            }
+            else
+            {
+                return "Objeye Bağlanılamadı";
+            }
+           
+        }
+        [WebMethod]
+        public string CariyiBayidenAyir(string LOGICALREF)
+        {
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdYeniMusteriler = new SqlCommand();
+                cmdYeniMusteriler.Connection = con;
+                cmdYeniMusteriler.CommandText = "delete from IZOKALE_MUSTERICARIILISKISI where LOGICALREF=" + LOGICALREF;
+                cmdYeniMusteriler.ExecuteNonQuery();
+                con.Close();
+                return "ok";
+
+            }
+        }
+
+        [WebMethod]
+        public string BayiyeCariBagla(string MusteriLREF, string CariLREF)
+        {
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdYeniMusteriler = new SqlCommand();
+                cmdYeniMusteriler.Connection = con;
+                cmdYeniMusteriler.CommandText = "   DECLARE @ARPREF VARCHAR(MAX)" +
+                                                "   DECLARE @CARIKODU VARCHAR(MAX)" +
+                                                "   DECLARE @CARIADI VARCHAR(MAX)" +
+                                                "   DECLARE @ADDR1 VARCHAR(MAX)" +
+                                                "   DECLARE @ADDR2 VARCHAR(MAX)" +
+                                                "   DECLARE @CITY VARCHAR(MAX)" +
+                                                "   DECLARE @TOWN VARCHAR(MAX)" +
+                                                "   DECLARE @EMAILADDR VARCHAR(MAX)" +
+                                                "   DECLARE @TELNRS1 VARCHAR(MAX)" +
+                                                "   DECLARE @TELNRS2 VARCHAR(MAX)" +
+                                                "   select @TELNRS2 = TELNRS2,@TELNRS1 = TELNRS1,@EMAILADDR = EMAILADDR,@TOWN = TOWN,@CITY = CITY,@ADDR2 = ADDR2,@ADDR1 = ADDR1,@ARPREF = LOGICALREF, @CARIKODU = CODE, @CARIADI = DEFINITION_ from LG_" + IzoKaleFirmaNo + "_CLCARD where LOGICALREF = " + CariLREF + "" +
+                                                "   insert into IZOKALE_MUSTERICARIILISKISI(CSTVNDREF, ARPREF, CARIKODU, FIRMNO, CARIADI) values(" + MusteriLREF + ", @ARPREF, @CARIKODU," + IzoKaleFirmaNo + ", @CARIADI)" +
+                                                "   update IZOKALE_MUSTERILER set TELNR2 = @TELNRS2,TELNR1 = @TELNRS1,WEBURL = @EMAILADDR,TOWN = @TOWN,CITY = @CITY,ADDR2 = @ADDR2,ADDR1 = @ADDR1 where LOGICALREF=" + MusteriLREF;
+                cmdYeniMusteriler.ExecuteNonQuery();
+                con.Close();
+                return "ok";
+
+            }
+        }
+
+
+        [WebMethod]
+        public string CariHesaplar(string temp)
+        {
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdCariler = new SqlCommand();
+                cmdCariler.Connection = con;
+                cmdCariler.CommandText = "select * from LG_" + IzoKaleFirmaNo + "_CLCARD where ACTIVE=0 and SUBSTRING(CODE, 1, 3)='120' and (DEFINITION_ like '%" + temp + "%' or CODE like '%" + temp + "%' or CITY like '%" + temp + "%')";
+                SqlDataReader rdCariler = cmdCariler.ExecuteReader();
+                DataTable dtCariler = new DataTable();
+                dtCariler.Load(rdCariler);
+                return JsonConvert.SerializeObject(dtCariler, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+            }
+        }
+        [WebMethod]
+        public string YeniBayi(string BayiAdi)
+        {
+            BayiAdi = BayiAdi.ToUpper();
+            string durum = "";
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+
+                con.Open();
+                SqlCommand cmdMusteriler = new SqlCommand();
+                cmdMusteriler.Connection = con;
+                cmdMusteriler.CommandText = "select * from IZOKALE_MUSTERILER where TITLE=@title";
+                cmdMusteriler.Parameters.AddWithValue("@title", BayiAdi);
+                SqlDataReader rdMusteriler = cmdMusteriler.ExecuteReader();
+                DataTable dtMusteriler = new DataTable();
+                dtMusteriler.Load(rdMusteriler);
+                if (dtMusteriler.Rows.Count == 0)
+                {
+                    SqlCommand cmdYeniMusteriler = new SqlCommand();
+                    cmdYeniMusteriler.Connection = con;
+                    cmdYeniMusteriler.CommandText = "insert into IZOKALE_MUSTERILER (TITLE,ACTIVE,CARDTYPE) values (@title,0,1); " +
+                        "update IZOKALE_MUSTERILER set CODE='K'+CAST(LOGICALREF+100 as nvarchar(20)) where TITLE=@title";
+                    cmdYeniMusteriler.Parameters.AddWithValue("@title", BayiAdi);
+                    cmdYeniMusteriler.ExecuteNonQuery();
+                    durum = "ok";
+                }
+                else
+                {
+                    durum = "Bu Bayi Adı Zaten Var";
+                }
+                con.Close();
+            }
+            return durum;
+        }
+
+        [WebMethod]
+        public List<Musteriler> BayiVeBagliCariKodlari()
+        {
+            List<Musteriler> Bayiler = new List<Musteriler>();
+
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdMusteriler = new SqlCommand();
+                cmdMusteriler.Connection = con;
+                cmdMusteriler.CommandText = "select * from IZOKALE_MUSTERILER order by TITLE asc";
+                SqlDataReader rdMusteriler = cmdMusteriler.ExecuteReader();
+                DataTable dtMusteriler = new DataTable();
+                dtMusteriler.Load(rdMusteriler);
+
+                SqlCommand cmdBaglantilar = new SqlCommand();
+                cmdBaglantilar.Connection = con;
+                cmdBaglantilar.CommandText = "select * from IZOKALE_MUSTERICARIILISKISI";
+                SqlDataReader rdBaglantilar = cmdBaglantilar.ExecuteReader();
+                DataTable dtBaglantilar = new DataTable();
+                dtBaglantilar.Load(rdBaglantilar);
+                for (int i = 0; i < dtMusteriler.Rows.Count; i++)
+                {
+                    Musteriler musteri = new Musteriler();
+                    musteri.BayiKodu = dtMusteriler.Rows[i]["CODE"].ToString();
+                    musteri.LOGICALREF = dtMusteriler.Rows[i]["LOGICALREF"].ToString();
+                    musteri.MusteriAdi = dtMusteriler.Rows[i]["TITLE"].ToString();
+                    musteri.ADDR1 = dtMusteriler.Rows[i]["ADDR1"].ToString();
+                    musteri.ADDR2 = dtMusteriler.Rows[i]["ADDR2"].ToString();
+                    musteri.CITY = dtMusteriler.Rows[i]["CITY"].ToString();
+                    musteri.TELNR1 = dtMusteriler.Rows[i]["TELNR1"].ToString();
+                    musteri.TELNR2 = dtMusteriler.Rows[i]["TELNR2"].ToString();
+                    musteri.WEBURL = dtMusteriler.Rows[i]["WEBURL"].ToString();
+                    musteri.TOWN = dtMusteriler.Rows[i]["TOWN"].ToString();
+                    musteri.BagliCariler = new List<MusteriyeBagliCariler>();
+                    for (int j = 0; j < dtBaglantilar.Rows.Count; j++)
+                    {
+                        if (dtMusteriler.Rows[i]["LOGICALREF"].ToString() == dtBaglantilar.Rows[j]["CSTVNDREF"].ToString())
+                        {
+                            MusteriyeBagliCariler bagliCariler = new MusteriyeBagliCariler();
+                            bagliCariler.LOGICALREF = dtBaglantilar.Rows[j]["LOGICALREF"].ToString();
+                            bagliCariler.ARPREF = dtBaglantilar.Rows[j]["ARPREF"].ToString();
+                            bagliCariler.CariAdi = dtBaglantilar.Rows[j]["CARIADI"].ToString();
+                            bagliCariler.CariKodu = dtBaglantilar.Rows[j]["CARIKODU"].ToString();
+                            musteri.BagliCariler.Add(bagliCariler);
+                        }
+                    }
+                    Bayiler.Add(musteri);
+                }
+                con.Close();
+            }
+            return Bayiler;
+
+        }
+
+
+        [WebMethod]
+        public string IlveIlceleriGetir()
+        {
+            List<IlBilgileri> Iller = new List<IlBilgileri>();
+
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdIller = new SqlCommand();
+                cmdIller.Connection = con;
+                cmdIller.CommandText = "select * from L_CITY where COUNTRY=176";
+                SqlDataReader rdIller = cmdIller.ExecuteReader();
+
+                SqlCommand cmdIlceler = new SqlCommand();
+                cmdIlceler.Connection = con;
+                cmdIlceler.CommandText = "select * from L_TOWN where CNTRNR=176";
+                SqlDataReader rdIlceler = cmdIlceler.ExecuteReader();
+                var dtIller = new DataTable();
+                var dtIlceler = new DataTable();
+
+
+                dtIller.Load(rdIller);
+                dtIlceler.Load(rdIlceler);
+
+                for (int i = 0; i < dtIller.Rows.Count; i++)
+                {
+                    IlBilgileri il = new IlBilgileri();
+                    il.LOGICALREF = dtIller.Rows[i]["LOGICALREF"].ToString();
+                    il.IlAdi = dtIller.Rows[i]["NAME"].ToString();
+                    il.IlKodu = dtIller.Rows[i]["CODE"].ToString();
+                    il.Ilceler = new List<IlceBilgileri>();
+                    for (int j = 0; j < dtIlceler.Rows.Count; j++)
+                    {
+                        if (dtIller.Rows[i]["LOGICALREF"].ToString() == dtIlceler.Rows[j]["CTYREF"].ToString())
+                        {
+                            IlceBilgileri ilce = new IlceBilgileri();
+                            ilce.LOGICALREF = dtIlceler.Rows[j]["LOGICALREF"].ToString();
+                            ilce.IlKodu = dtIlceler.Rows[j]["CTYREF"].ToString();
+                            ilce.IlceAdi = dtIlceler.Rows[j]["NAME"].ToString();
+                            il.Ilceler.Add(ilce);
+                        }
+
+                    }
+                    Iller.Add(il);
+                }
+
+                con.Close();
+            }
+            return JsonConvert.SerializeObject(Iller.OrderBy(x => x.IlAdi), new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+        public NakliyeBilgileri NakliyeFiyati(string IlKodu, string IlceAdi, bool fabrikaTeslimMi, string BirimSeti)
+        {
+            NakliyeBilgileri NakliyeBilgileri = new NakliyeBilgileri();
+            if (fabrikaTeslimMi)
+            {
+                NakliyeBilgileri.Statu = true;
+                NakliyeBilgileri.NakliyeFiyatSayisi = 1;
+                NakliyeBilgileri.NakliyeHatasi = "";
+                NakliyeBilgileri.LOGICALREF = -1;
+                NakliyeBilgileri.NakliyeBirimFiyatiTL = 0;
+                NakliyeBilgileri.NakliyeAdi = "Fabrika Teslim Nakliye Fiyatı";
+                NakliyeBilgileri.NakliyeBirimSeti = BirimSeti;
+                NakliyeBilgileri.NakliyeKodu = "-1";
+                return NakliyeBilgileri;
+            }
+            if (BirimSeti.Trim() == "")
+            {
+                NakliyeBilgileri.Statu = false;
+                NakliyeBilgileri.NakliyeFiyatSayisi = 0;
+                NakliyeBilgileri.NakliyeHatasi = "Nakliye Fiyatı Girilmemiş";
+                return NakliyeBilgileri;
+            }
+
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdMalzemeler = new SqlCommand();
+                cmdMalzemeler.Connection = con;
+                cmdMalzemeler.CommandText =
+                                  " select itemSRV.LOGICALREF, itemSRV.CODE as NakliyeKodu,itemSRV.DEFINITION_ as NakliyeAdi,birim.NAME as NakliyeBirimSeti, ISNULL(ISNULL(price.PRICE,0)*ISNULL(birim.CONVFACT2,0),0) as NakliyeBirimFiyatiTL" +
+" from LG_" + IzoKaleFirmaNo + "_SRVCARD itemSRV left join LG_" + IzoKaleFirmaNo + "_PRCLIST price on itemSRV.LOGICALREF = price.CARDREF and price.ACTIVE = 0 left join" +
+" LG_" + IzoKaleFirmaNo + "_UNITSETL birim on price.UOMREF = birim.LOGICALREF" +
+" where SUBSTRING(itemSRV.CODE,0,5)= 'NB" + IlKodu + "' and itemSRV.DEFINITION_ like '%" + IlceAdi + "%' and birim.NAME = '" + BirimSeti + "'";
+
+                DataTable dt = new DataTable();
+                SqlDataReader rdNakliyeler = cmdMalzemeler.ExecuteReader();
+                dt.Load(rdNakliyeler);
+                if (dt.Rows.Count > 1)
+                {
+                    NakliyeBilgileri.Statu = false;
+                    NakliyeBilgileri.NakliyeFiyatSayisi = dt.Rows.Count;
+                    NakliyeBilgileri.NakliyeHatasi = dt.Rows.Count + " adet nakliye fiyatı girilmemiş. ";
+                }
+                else if (dt.Rows.Count == 0)
+                {
+                    NakliyeBilgileri.Statu = false;
+                    NakliyeBilgileri.NakliyeFiyatSayisi = dt.Rows.Count;
+                    NakliyeBilgileri.NakliyeHatasi = "Nakliye Fiyatı Girilmemiş";
+                }
+                else if (dt.Rows.Count == 1)
+                {
+                    NakliyeBilgileri.Statu = true;
+                    NakliyeBilgileri.NakliyeFiyatSayisi = dt.Rows.Count;
+                    NakliyeBilgileri.NakliyeHatasi = "";
+                    NakliyeBilgileri.LOGICALREF = Convert.ToInt32(dt.Rows[0]["LOGICALREF"].ToString());
+                    NakliyeBilgileri.NakliyeBirimFiyatiTL = Convert.ToDouble(dt.Rows[0]["NakliyeBirimFiyatiTL"].ToString());
+                    NakliyeBilgileri.NakliyeAdi = dt.Rows[0]["NakliyeAdi"].ToString();
+                    NakliyeBilgileri.NakliyeBirimSeti = dt.Rows[0]["NakliyeBirimSeti"].ToString();
+                    NakliyeBilgileri.NakliyeKodu = dt.Rows[0]["NakliyeKodu"].ToString();
+                }
+
+            }
+            return NakliyeBilgileri;
+        }
+
+        [WebMethod]
+        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
+        {
+            string IlText = "";
+            string IlceText = "";
+            var IlveIlceleri = JsonConvert.DeserializeObject<List<IlBilgileri>>(IlveIlceleriGetir());
+            foreach (var item in IlveIlceleri.Where(x => x.LOGICALREF.ToString() == Il))
+            {
+                IlText = item.IlAdi;
+                Il = item.IlKodu;
+                foreach (var item2 in item.Ilceler.Where(x => x.LOGICALREF.ToString() == Ilce))
+                {
+                    Ilce = item2.IlceAdi;
+                    IlceText = item2.IlceAdi;
+                }
+            }
+            if (Ilce.ToLower() == "merkez")
+            {
+                IlceText = "";
+            }
+
+            List<Malzeme> Malzemeler = new List<Malzeme>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdMalzemeler = new SqlCommand();
+                cmdMalzemeler.Connection = con;
+                cmdMalzemeler.CommandText =
+                                  " select *," +
+                                    " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
+                                    " from(" +
+                                    "    select SETL.CODE AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME3 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                    "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
+                                    "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
+                                    "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
+                                   "    from LG_" + IzoKaleFirmaNo + "_ITEMS ITEM" +
+                                    "\n  LEFT JOIN LG_" + IzoKaleFirmaNo + "_ITMUNITA UNITA  WITH (NOLOCK) ON UNITA.ITEMREF = ITEM.LOGICALREF AND UNITA.LINENR = 1 " +
+                                    "\n  LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL SETL  WITH (NOLOCK) ON UNITA.UNITLINEREF = SETL.LOGICALREF " +
+                                    " WHERE(ITEM.ACTIVE = 0)   AND(ITEM.SPECODE = '" + SPECODE1 + "') AND ITEM.SPECODE5='FLOW'" +
+                                    ")  aaa";
+
+                if (SPECODE2 != "")
+                {
+                    cmdMalzemeler.CommandText = cmdMalzemeler.CommandText + " where (SPECODE2 = '" + SPECODE2 + "')";
+                }
+
+                SqlDataReader rdMalzemeler = cmdMalzemeler.ExecuteReader();
+                while (rdMalzemeler.Read())
+                {
+
+                    Malzeme malzeme = new Malzeme();
+                    malzeme.Success = true;
+                    malzeme.HataMesaji = "";
+                    var nakliyeBilgileri = NakliyeFiyati(Il, IlceText, fabrikaTeslimMi, rdMalzemeler["LOGOID"].ToString());
+
+                    if (nakliyeBilgileri.Statu == false)
+                    {
+                        malzeme.HataMesaji = malzeme.HataMesaji + "\n " + rdMalzemeler["MalzemeKodu"].ToString() + " için " + nakliyeBilgileri.NakliyeHatasi;
+
+                    }
+
+
+                    if (Convert.ToInt32(rdMalzemeler["BaseFiyatSayisi"].ToString()) == 0)
+                    {
+                        malzeme.HataMesaji = malzeme.HataMesaji + "\n " + rdMalzemeler["MalzemeKodu"].ToString() + " için " + FiyatListesiKodu + " listesinde fiyat girilmemiş. ";
+                    }
+                    if (Convert.ToInt32(rdMalzemeler["BaseFiyatSayisi"].ToString()) > 1)
+                    {
+                        malzeme.HataMesaji = malzeme.HataMesaji + "\n " + rdMalzemeler["MalzemeKodu"].ToString() + " için " + FiyatListesiKodu + " listesinde mükerrer fiyat bulunuyor. ";
+                    }
+                    string BaseDoviz = rdMalzemeler["BaseTopParaBirimi"].ToString();
+                    double BaseTopFiyat = 0;
+                    if (Convert.ToInt32(rdMalzemeler["BaseFiyatSayisi"].ToString()) == 1)
+                    {
+                        BaseTopFiyat = Convert.ToDouble(rdMalzemeler["BaseTopFiyat"].ToString());
+                    }
+                    if (malzeme.HataMesaji != "")
+                    {
+
+                        malzeme.BaseFiyat = 0;
+                        malzeme.BaseDoviz = "";
+
+                    }
+                    else
+                    {
+                        malzeme.BaseFiyat = BaseTopFiyat;
+                        malzeme.BaseDoviz = BaseDoviz;
+                    }
+                    malzeme.HesaplamaDetayliAciklama = FiyatListesiKodu;
+                    malzeme.HesaplamaDetayliAciklama = malzeme.HesaplamaDetayliAciklama + "  B.Fiyat: " + BaseTopFiyat + BaseDoviz;
+                    malzeme.HesaplamaDetayliAciklama = malzeme.HesaplamaDetayliAciklama + "  Güncel Kurlar: " + " USD(" + GuncelUSD + ") " + " EUR(" + GuncelEUR + ")";
+
+                    if (BaseDoviz == "USD")
+                    {
+                        malzeme.HesaplanmisBirimFiyatiTL = malzeme.BaseFiyat * Convert.ToDouble(GuncelUSD);
+                    }
+                    if (BaseDoviz == "EUR")
+                    {
+                        malzeme.HesaplanmisBirimFiyatiTL = malzeme.BaseFiyat * Convert.ToDouble(GuncelEUR);
+                    }
+                    if (BaseDoviz == "TL")
+                    {
+                        malzeme.HesaplanmisBirimFiyatiTL = malzeme.BaseFiyat * Convert.ToDouble(1);
+                    }
+
+                    malzeme.NakliyeMasrafiTL = nakliyeBilgileri.NakliyeBirimFiyatiTL;
+                    if (malzeme.NakliyeMasrafiTL > 0)
+                    {
+                        malzeme.HesaplanmisBirimFiyatiTL += malzeme.NakliyeMasrafiTL;
+                        malzeme.HesaplamaDetayliAciklama = malzeme.HesaplamaDetayliAciklama + "  Nakliye: " + malzeme.NakliyeMasrafiTL + " TL " + nakliyeBilgileri.NakliyeAdi;
+
+                        malzeme.NakliyeKartiLref = nakliyeBilgileri.LOGICALREF;
+                        malzeme.NakliyeAdi = nakliyeBilgileri.NakliyeAdi;
+                        malzeme.NakliyeBirimSeti = nakliyeBilgileri.NakliyeBirimSeti;
+                        malzeme.NakliyeKodu = nakliyeBilgileri.NakliyeKodu;
+                    }
+
+
+
+
+                    malzeme.SPECODE1 = rdMalzemeler["SPECODE"].ToString();
+                    malzeme.SPECODE2 = rdMalzemeler["SPECODE2"].ToString();
+                    malzeme.Kdv = Convert.ToDouble(rdMalzemeler["KDV"].ToString());
+                    malzeme.sozlesmeEUR = 1;
+                    malzeme.sozlesmeUSD = 1;
+                    malzeme.GuncelEUR = GuncelEUR;
+                    malzeme.GuncelUSD = GuncelUSD;
+
+                    malzeme.MalzemeKodu = rdMalzemeler["MalzemeKodu"].ToString();
+                    malzeme.MalzemeAdi = rdMalzemeler["MalzemeAdi"].ToString();
+                    malzeme.MalzemeAciklama = rdMalzemeler["MalzemeAciklama"].ToString();
+                    malzeme.Birim = rdMalzemeler["Birim"].ToString();
+                    Malzemeler.Add(malzeme);
+                }
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(Malzemeler, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+        [WebMethod]
+        public string SecilebilirFiyatListeleri(string BayiKodu)
+        {
+
+            List<FiyatListesiBakiye> Baglantilar = new List<FiyatListesiBakiye>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdBaglantiBakiyeOzeti = new SqlCommand();
+                cmdBaglantiBakiyeOzeti.Connection = con;
+                cmdBaglantiBakiyeOzeti.CommandText = "select CODE as FiyatListesi,NAME as Aciklama,LOGICALREF as BaglantiLREF  from LG_" + IzoKaleFirmaNo + "_PROJECT where ACTIVE=0 and SPECODE='001'";
+
+
+
+
+
+
+                SqlDataReader rdBaglantiBakiyeOzeti = cmdBaglantiBakiyeOzeti.ExecuteReader();
+                while (rdBaglantiBakiyeOzeti.Read())
+                {
+                    FiyatListesiBakiye baglanti = new FiyatListesiBakiye();
+                    baglanti.siparisTutari = String.Format("{0:N}", Convert.ToDouble("0"));
+                    baglanti.baglantiTutari = String.Format("{0:N}", Convert.ToDouble("0"));
+                    baglanti.bakiye = String.Format("{0:N}", Convert.ToDouble("0"));
+                    baglanti.fiyatListesiKodu = rdBaglantiBakiyeOzeti["FiyatListesi"].ToString();
+                    baglanti.Aciklama = rdBaglantiBakiyeOzeti["Aciklama"].ToString();
+                    baglanti.baglantiLREF = rdBaglantiBakiyeOzeti["BaglantiLREF"].ToString();
+
+                    Baglantilar.Add(baglanti);
+
+
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(Baglantilar, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+        [WebMethod]
+        public string AnaGruplar(string FiyatListesi)
+        {
+
+            List<MenuBasliklari> MenuBasliklari = new List<MenuBasliklari>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdMenuBasliklari = new SqlCommand();
+                cmdMenuBasliklari.Connection = con;
+                cmdMenuBasliklari.CommandText = "";
+
+                cmdMenuBasliklari.CommandText = "SELECT DISTINCT SPECODE, DEFINITION_ FROM LG_" + IzoKaleFirmaNo + "_SPECODES WHERE CODETYPE = 1 AND SPECODETYPE = 1 AND SPETYP1 = 1 "
+                + " AND SPECODE like '%KB_%'"
+                + " ORDER BY DEFINITION_ ASC";
+
+
+
+                SqlDataReader rdMenuBasliklari = cmdMenuBasliklari.ExecuteReader();
+                while (rdMenuBasliklari.Read())
+                {
+                    MenuBasliklari menu = new MenuBasliklari();
+                    menu.Success = true;
+                    menu.OzelKod = rdMenuBasliklari["SPECODE"].ToString();
+                    menu.MenuAdi = rdMenuBasliklari["DEFINITION_"].ToString();
+                    menu.AltMenuler = new List<AltMenuBasliklari>();
+
+                    SqlCommand cmdAltMenuBasliklari = new SqlCommand();
+                    cmdAltMenuBasliklari.Connection = con;
+                    cmdAltMenuBasliklari.CommandText = "SELECT DISTINCT SPECODE, DEFINITION_ FROM LG_" + IzoKaleFirmaNo + "_SPECODES SPS WHERE CODETYPE = 1 AND SPECODETYPE = 1 AND SPETYP2 = 1 "
+                    // + " AND SPECODE LIKE '" + menu.OzelKod + "%' AND (SELECT COUNT(*) FROM LG_" + IzoKaleFirmaNo + "_ITEMS WITH (NOLOCK) WHERE SPECODE5 = '" + menu.OzelKod + "' AND SPECODE3 = SPS.SPECODE AND ACTIVE = 0 )>0 "
+                    + " AND SPECODE LIKE '" + menu.OzelKod + "%' "
+                    + " ORDER BY DEFINITION_ ASC";
+                    SqlDataReader rdAltMenuBasliklari = cmdAltMenuBasliklari.ExecuteReader();
+                    while (rdAltMenuBasliklari.Read())
+                    {
+                        AltMenuBasliklari altmenu = new AltMenuBasliklari();
+                        altmenu.AltMenuOzelKod = rdAltMenuBasliklari["SPECODE"].ToString();
+                        altmenu.AltMenuAdi = rdAltMenuBasliklari["DEFINITION_"].ToString();
+                        menu.AltMenuler.Add(altmenu);
+
+                    }
+
+
+                    MenuBasliklari.Add(menu);
+                }
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(MenuBasliklari.OrderBy(x => x.MenuAdi), new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+        [WebMethod]
+        public string HesapEkstresi(string BayiKodu)
+        {
+            List<HesapEkstresi> HesapEksteListesi = new List<HesapEkstresi>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdHesapEkstresi = new SqlCommand();
+                cmdHesapEkstresi.Connection = con;
+                cmdHesapEkstresi.CommandText =
+
+                                      "	   				select  ROW_NUMBER() OVER(ORDER BY VergiNo, Tarih Asc) AS SNo,  * from(										" +
+"	                         SELECT 														" +
+"							 CARI.CODE  CariKodu,								" +
+"							 (CASE WHEN CARI.TAXNR = '' THEN CARI.TCKNO ELSE CARI.TAXNR END) AS VergiNo,								" +
+"	                         SUBSTRING(CARI.DEFINITION_, 1, 30) + ' / ' + CARI.DEFINITION2 Cari, 														" +
+"							 ISNULL(MUSTERI.CODE,'') BayiKodu, 								" +
+"							 ISNULL(MUH.CODE,'') MuhHesabiKodu ,								" +
+"							 ISNULL(MUH.DEFINITION_,'') MuhHesabiAdi,								" +
+"	                         (CASE 														" +
+"	                         when LINE.TRCODE = 1 then 'Nakit Tahsilat' 														" +
+"	                         when LINE.TRCODE = 2 then 'Nakit Ödeme' 														" +
+"	                         when LINE.TRCODE = 3 then 'Borç Dekontu' 														" +
+"	                         when LINE.TRCODE = 4 then 'Alacak Dekontu' 														" +
+"	                         when LINE.TRCODE = 5 then 'Virman Işlemi' 														" +
+"	                         when LINE.TRCODE = 6 then 'Kur Farkı İşlemi' 														" +
+"	                         when LINE.TRCODE = 12 then 'Özel İşlem' 														" +
+"	                         when LINE.TRCODE = 14 then 'Açılış Fişi' 														" +
+"	                         when LINE.TRCODE = 41 then 'Verilen Vade Farkı Faturası' 														" +
+"	                         when LINE.TRCODE = 42 then 'Alınan Vade Farkı Faturası' 														" +
+"	                         when LINE.TRCODE = 45 then 'Verilen Serbest Meslek Makbuzu' 														" +
+"	                         when LINE.TRCODE = 46 then 'Alınan Serbest Meslek Makbuzu' 														" +
+"	                         when LINE.TRCODE = 70 then 'Kredi Kartı Fişi' 														" +
+"	                         when LINE.TRCODE = 71 then 'Kredi Kartı İade Fişi' 														" +
+"	                         when LINE.TRCODE = 72 then 'Firma Kredi Kartı Fişi' 														" +
+"	                         when LINE.TRCODE = 73 then 'Firma Kredi Kartı İade Fişi' 														" +
+"	                         END) BelgeTipi, 														" +
+"							 '' AS SiparisNo,								" +
+"	                         LINE.DATE_ AS Tarih,  														" +
+"	                         LINE.TRANNO AS BelgeNo,  														" +
+"							 '' AS OdemeTipi,								" +
+"	                         (CASE WHEN LINE.SIGN = 0 THEN LINE.AMOUNT ELSE 0 END)  AS Borc, 														" +
+"	                         (CASE WHEN LINE.SIGN = 1 THEN LINE.AMOUNT ELSE 0 END) AS Alacak, 														" +
+"	                         '' AS Aciklama, 														" +
+"	                         LINE.LINEEXP AS Detay 														" +
+"	                         FROM  LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_CLFLINE LINE WITH(NOLOCK) 														" +
+"	                         LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH(NOLOCK) ON LINE.CLIENTREF = CARI.LOGICALREF 														" +
+"	                         LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo + "														" +
+"	                         LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 														" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_CRDACREF muhILISKI WITH (nOLOCK) ON muhILISKI.CARDREF = CARI.LOGICALREF AND  muhILISKI.TRCODE = 5								" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_EMUHACC MUH WITH (NOLOCK) ON muhILISKI.ACCOUNTREF = MUH.LOGICALREF 								" +
+"	                         WHERE LINE.CANCELLED = 0 AND LINE.MODULENR IN (5, 61, 62, 63, 64) AND LINE.TRCODE IN (1, 2, 3, 4, 5, 6, 12, 14, 41, 42, 45, 46, 70, 71, 72, 73)                         						 								" +
+"							 UNION ALL          				   				" +
+"						   SELECT 									" +
+"						    CARI.CODE  CariKodu,									" +
+"							(CASE WHEN CARI.TAXNR = '' THEN CARI.TCKNO ELSE CARI.TAXNR end ) AS VergiNo,								" +
+"	                         SUBSTRING(CARI.DEFINITION_, 1, 30) + ' / ' + CARI.DEFINITION2 Cari, 														" +
+"							 ISNULL(MUSTERI.CODE,'') M2B_BayiKodu, 								" +
+"							 ISNULL(MUH.CODE,'') MuhHesabiKodu ,								" +
+"							 ISNULL(MUH.DEFINITION_,'') MuhHesabiAdi,								" +
+"	                         (CASE  														" +
+"	                         WHEN INV.TRCODE = 1   THEN 'Satınalma Faturası' 														" +
+"	                         WHEN INV.TRCODE = 2   THEN 'Perakende Satış İade Faturası' 														" +
+"	                         WHEN INV.TRCODE = 3   THEN 'Toptan Satış İade Faturası' 														" +
+"	                         WHEN INV.TRCODE = 4   THEN 'Alınan Hizmet Faturası' 														" +
+"	                         WHEN INV.TRCODE = 6   THEN 'Satınalma İade Faturası' 														" +
+"	                         WHEN INV.TRCODE = 7   THEN 'Perakende Satış Faturası' 														" +
+"	                         WHEN INV.TRCODE = 8   THEN 'Toptan Satış Faturası' 														" +
+"	                         WHEN INV.TRCODE = 9   THEN 'Verilen Hizmet Faturası' 														" +
+"	                         WHEN INV.TRCODE = 13  THEN 'Satınalma Fiyat Farkı Faturası' 														" +
+"	                         WHEN INV.TRCODE = 14  THEN 'Satış Fiyat Farkı Faturası' 														" +
+"	                         WHEN INV.TRCODE = 26  THEN 'Müstahsil Makbuzu' 														" +
+"	                         ELSE '??' 														" +
+"	                         END ) as BelgeTipi, 														" +
+"							 (CASE WHEN INV.TRCODE NOT IN (7,8) THEN '' 								" +
+"							      ELSE 								" +
+"									 ISNULL((						" +
+"									 SELECT SIP.FICHENO +',  '						" +
+"										FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STLINE LINE WITH (NOLOCK) 					" +
+"										LEFT JOIN LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STFICHE FIS  WITH (NOLOCK) ON LINE.STFICHEREF = FIS.LOGICALREF					" +
+"										LEFT JOIN LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFICHE SIP  WITH (NOLOCK)  ON LINE.ORDFICHEREF = SIP.LOGICALREF					" +
+"										WHERE FIS.INVNO = INV.FICHENO GROUP BY SIP.FICHENO					" +
+"										for XML PATH ('')					" +
+"									 ),'')						" +
+"							 END) AS  SiparisNo,								" +
+"	                         INV.DATE_ AS Tarih,  														" +
+"	                         INV.FICHENO AS BelgeNo, 														" +
+"							 ISNULL(PLN.CODE,'') AS OdemeTipi, 								" +
+"	                         (CASE WHEN INV.TRCODE IN (6, 7, 8, 9) THEN INV.NETTOTAL WHEN INV.TRCODE IN (13, 14) AND INV.DECPRDIFF = 0 THEN INV.NETTOTAL ELSE 0 END) AS Borc, 														" +
+"	                         (CASE WHEN INV.TRCODE IN(1, 2, 3, 4) THEN INV.NETTOTAL  WHEN INV.TRCODE IN(13, 14) AND INV.DECPRDIFF = 1 THEN INV.NETTOTAL ELSE 0 END) AS Alacak, 														" +
+"	                         INV.DOCTRACKINGNR AS Aciklama,  														" +
+"	                         INV.GENEXP1 AS Detay 														" +
+"	                         FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_INVOICE INV WITH(NOLOCK) 														" +
+"	                         LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH(NOLOCK) ON INV.CLIENTREF = CARI.LOGICALREF 														" +
+"	                         LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO =  " + IzoKaleFirmaNo + "														" +
+"	                         LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 														" +
+"	                         LEFT JOIN LG_" + IzoKaleFirmaNo + "_CRDACREF muhILISKI ON muhILISKI.CARDREF = CARI.LOGICALREF AND muhILISKI.TRCODE = 5 														" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_EMUHACC MUH ON muhILISKI.ACCOUNTREF = MUH.LOGICALREF 								" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_PAYPLANS PLN WITH (NOLOCK) ON INV.PAYDEFREF = PLN.LOGICALREF								" +
+"							  WHERE INV.CANCELLED = 0 AND INV.TRCODE IN (1, 2, 3, 4, 6, 7, 8, 9, 13, 14, 26) 								" +
+"	                         UNION ALL 														" +
+"	                         SELECT 														" +
+"							 CARI.CODE  CariKodu,								" +
+"							 (CASE WHEN CARI.TAXNR = '' THEN CARI.TCKNO ELSE CARI.TAXNR END ) AS VergiNo,								" +
+"	                         SUBSTRING(CARI.DEFINITION_, 1, 30) + ' / ' + CARI.DEFINITION2 Cari, 														" +
+"							 ISNULL(MUSTERI.CODE,'') M2B_BayiKodu, 								" +
+"							 ISNULL(MUH.CODE,'') MuhHesabiKodu ,								" +
+"							 ISNULL(MUH.DEFINITION_,'') MuhHesabiAdi,								" +
+"	                         (CASE 														" +
+"	                         WHEN FIS.TRCODE = 3 then 'Gelen Havale/Eft' 														" +
+"	                         WHEN FIS.TRCODE = 4 then 'Gönderilen Havale/Eft' 														" +
+"	                         WHEN FIS.TRCODE = 7 then 'Döviz Alış Belgesi' 														" +
+"	                         WHEN FIS.TRCODE = 8 then 'Döviz Satış Belgesi' 														" +
+"	                         WHEN FIS.TRCODE = 16 then 'Banka Alınan Hizmet Faturası' 														" +
+"	                         WHEN FIS.TRCODE = 17 then 'Banka Verilen Hizmet Faturası' 														" +
+"	                         WHEN FIS.TRCODE = 21 then 'Mustahsil Makbuzu' 														" +
+"	                         ELSE '??' 														" +
+"	                         END) AS BelgeTipi, 														" +
+"							 '' AS SiparisNo,								" +
+"	                         FIS.DATE_ AS Tarih,  														" +
+"	                         FIS.FICHENO AS BelgeNo,  														" +
+"							 '' AS OdemeTipi,								" +
+"	                         (CASE WHEN SATIR.SIGN = 1 THEN AMOUNT ELSE 0 END) AS Borc, 														" +
+"	                         (CASE WHEN SATIR.SIGN = 0 THEN AMOUNT ELSE 0 END) AS Alacak, 														" +
+"	                         (CASE WHEN SATIR.TRANSDUEDATE = SATIR.DATE_ THEN '' ELSE 'Vade: ' + CONVERT(NVARCHAR, SATIR.TRANSDUEDATE, 104) END) AS Aciklama, 														" +
+"	                         SATIR.LINEEXP AS Detay 														" +
+"	                         FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_BNFLINE SATIR WITH(NOLOCK) 														" +
+"	                         LEFT JOIN LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_BNFICHE FIS WITH(NOLOCK) ON SATIR.SOURCEFREF = FIS.LOGICALREF 														" +
+"	                         LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH(NOLOCK) ON SATIR.CLIENTREF = CARI.LOGICALREF 														" +
+"	                         LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO =  " + IzoKaleFirmaNo + "														" +
+"	                         LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 														" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_CRDACREF muhILISKI WITH (nOLOCK) ON muhILISKI.CARDREF = CARI.LOGICALREF AND  muhILISKI.TRCODE = 5 								" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_EMUHACC MUH WITH (NOLOCK) ON muhILISKI.ACCOUNTREF = MUH.LOGICALREF 								" +
+"	                         WHERE SATIR.CANCELLED = 0 AND SATIR.CLIENTREF != 0 AND SATIR.TRANSTYPE = 1 AND FIS.TRCODE IN (3, 4, 7, 8, 16, 17, 21) 														" +
+"	                         UNION ALL 						 								" +
+"	                         SELECT 														" +
+"							 CARI.CODE  CariKodu,								" +
+"							 (CASE WHEN CARI.TAXNR = '' THEN CARI.TCKNO ELSE CARI.TAXNR END ) AS VergiNo,								" +
+"	                         SUBSTRING(CARI.DEFINITION_, 1, 30) + ' / ' + CARI.DEFINITION2 Cari, 														" +
+"							 ISNULL(MUSTERI.CODE,'') M2B_BayiKodu, 								" +
+"							 ISNULL(MUH.CODE,'') MuhHesabiKodu ,								" +
+"							 ISNULL(MUH.DEFINITION_,'') MuhHesabiAdi,								" +
+"	                         (CASE 														" +
+"	                         when ROLL.TRCODE = 1 then 'Çek Girişi' 														" +
+"	                         when ROLL.TRCODE = 2 then 'Senet Girişi' 														" +
+"	                         when ROLL.TRCODE = 3 then 'Çek Çıkışı' 														" +
+"	                         when ROLL.TRCODE = 4 then 'Senet Çıkışı' 														" +
+"	                         END) BelgeTipi, 														" +
+"							 '' AS SiparisNo,								" +
+"	                         ROLL.DATE_ AS Tarih,  														" +
+"	                         ROLL.ROLLNO AS BelgeNo,														" +
+"							 '' AS OdemeTipi,  								" +
+"	                         (CASE WHEN ROLL.TRCODE IN (3, 4) THEN TOTAL ELSE 0 END) AS Borc, 														" +
+"	                         (CASE WHEN ROLL.TRCODE IN(1, 2) THEN TOTAL ELSE 0 END) AS Alacak, 														" +
+"	                         '' AS Aciklama, 														" +
+"	                         ROLL.GENEXP1 + ' ' + ROLL.GENEXP2 AS Detay 														" +
+"	                         FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_CSROLL ROLL WITH(NOLOCK) 														" +
+"	                         LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH(NOLOCK) ON ROLL.CARDREF = CARI.LOGICALREF 														" +
+"	                         LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO =  " + IzoKaleFirmaNo + "														" +
+"	                         LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 														" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_CRDACREF muhILISKI WITH (nOLOCK) ON muhILISKI.CARDREF = CARI.LOGICALREF AND  muhILISKI.TRCODE = 5								" +
+"							 LEFT JOIN LG_" + IzoKaleFirmaNo + "_EMUHACC MUH WITH (NOLOCK) ON muhILISKI.ACCOUNTREF = MUH.LOGICALREF 								" +
+"	                         WHERE ROLL.CANCELLED = 0 AND ROLL.TRCODE IN (1, 2, 3, 4)                        														" +
+"	) as aa where BayiKodu='" + BayiKodu + "'	order by Tarih asc";
+
+
+
+                SqlDataReader rdHesapEkstresi = cmdHesapEkstresi.ExecuteReader();
+                double bakiyee = 0;
+                while (rdHesapEkstresi.Read())
+
+
+
+                {
+                    HesapEkstresi ekstre = new HesapEkstresi();
+                    ekstre.firma = rdHesapEkstresi["Cari"].ToString();
+                    ekstre.Tarih = DateTime.Parse(rdHesapEkstresi["Tarih"].ToString());
+                    ekstre.IslemTipi = rdHesapEkstresi["BelgeTipi"].ToString();
+                    ekstre.Borc = 0;
+                    if (Convert.ToDouble(rdHesapEkstresi["Borc"].ToString()) != 0)
+                    {
+                        ekstre.Borc = Math.Round(Convert.ToDouble(rdHesapEkstresi["Borc"].ToString()), 2);
+                    };
+
+                    ekstre.Alacak = 0;
+                    if (Convert.ToDouble(rdHesapEkstresi["Alacak"].ToString()) != 0)
+                    {
+                        ekstre.Alacak = Math.Round(Convert.ToDouble(rdHesapEkstresi["Alacak"].ToString()), 2);
+                    }
+
+                    ekstre.Bakiye = bakiyee + ekstre.Borc - ekstre.Alacak;
+                    bakiyee = ekstre.Borc - ekstre.Alacak;
+
+                    //var aaa = rdHesapEkstresi["Bakiye"].ToString();
+                    //if (Convert.ToDouble(rdHesapEkstresi["Bakiye"].ToString()) != 0)
+                    //{
+                    //    ekstre.Bakiye = Math.Round(Convert.ToDouble(rdHesapEkstresi["Bakiye"].ToString()), 2);
+                    //}
+
+
+                    ekstre.BelgeNo = rdHesapEkstresi["BelgeNo"].ToString();
+                    ekstre.OdemeTipi = rdHesapEkstresi["OdemeTipi"].ToString();
+                    ekstre.SiparisNo = rdHesapEkstresi["SiparisNo"].ToString();
+                    ekstre.Aciklama = rdHesapEkstresi["Aciklama"].ToString();
+                    ekstre.Detay = rdHesapEkstresi["Detay"].ToString();
+                    HesapEksteListesi.Add(ekstre);
+                }
+
+                con.Close();
+            }
+
+
+            return JsonConvert.SerializeObject(HesapEksteListesi, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+
+        [WebMethod]
+        public string IrsaliyeFisiSatirlari(int stFicheRef)
+        {
+            List<IrsaliyeSatir> IrsaliyeSatirlari = new List<IrsaliyeSatir>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdIrsaliyeSatir = new SqlCommand();
+                cmdIrsaliyeSatir.Connection = con;
+                cmdIrsaliyeSatir.CommandText =
+                              "SELECT LINE.LOGICALREF as STLINELOGICAREF, "
+                                            + " ITEM.CODE as MALZEMEKODU, ITEM.NAME AS MALZEMEADI, LINE.AMOUNT as MIKTAR, SETL.CODE AS BIRIM "
+                                            + " FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STLINE LINE WITH (NOLOCK) "
+                                            + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_ITEMS ITEM WITH (NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0 "
+                                            + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL SETL ON LINE.UOMREF = SETL.LOGICALREF "
+                                            + " WHERE LINE.CANCELLED = 0 AND LINE.TRCODE IN (7,8) AND LINE.LINETYPE = 0 AND LINE.STFICHEREF = " + stFicheRef;
+
+                SqlDataReader rdIrsaliyeSatir = cmdIrsaliyeSatir.ExecuteReader();
+                while (rdIrsaliyeSatir.Read())
+                {
+                    IrsaliyeSatir satir = new IrsaliyeSatir();
+                    satir.stLineRef = Convert.ToInt32(rdIrsaliyeSatir["STLINELOGICAREF"].ToString());
+                    satir.malzemeKodu = rdIrsaliyeSatir["MALZEMEKODU"].ToString();
+                    satir.malzemeAdi = rdIrsaliyeSatir["MALZEMEADI"].ToString();
+                    satir.miktar = String.Format("{0:N}", Convert.ToDouble(rdIrsaliyeSatir["MIKTAR"].ToString()));
+                    satir.birim = rdIrsaliyeSatir["BIRIM"].ToString();
+                    IrsaliyeSatirlari.Add(satir);
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(IrsaliyeSatirlari, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+        [WebMethod]
+        public string IrsaliyeFisleri(string BayiKodu)
+        {
+            List<IrsaliyeFis> Irsaliyeler = new List<IrsaliyeFis>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdIrsaliyeFis = new SqlCommand();
+                cmdIrsaliyeFis.Connection = con;
+                cmdIrsaliyeFis.CommandText =
+                                " SELECT IRSALIYE.LOGICALREF AS STFICHELOGICALREF, "
+                                + " SUBSTRING(CARI.DEFINITION_,1,15) AS cariAdi,  "
+                                + " IRSALIYE.DATE_ as irsaliyeTarihi, "
+                                + " ISNULL(IRSALIYE.FICHENO, ' - ') as irsaliyeNo, "
+
+                                + " ISNULL((SELECT TOP 1 DRIVERNAME1+' '+DRIVERSURNAME1+' / '+PLATENUM1+' - '+CHASSISNUM1 FROM  LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_EINVOICEDET WHERE STFREF = IRSALIYE.LOGICALREF ORDER BY LOGICALREF DESC    ),'') AS SOFOR,"
+
+                                + " IRSALIYE.DOCTRACKINGNR AS projeKodu, "
+                                //  + " ISNULL(SOZLESME.DOCODE, ' - ') AS baglantiKodu, "
+                                + " ISNULL(INV.FICHENO,'-') AS faturaNo, "
+                                + " IRSALIYE.GENEXP1 +' '+ IRSALIYE.GENEXP2 +' '+IRSALIYE.GENEXP3 +' '+IRSALIYE.GENEXP4 +' '+ IRSALIYE.GENEXP5 +' '+IRSALIYE.GENEXP6 AS aciklamalar "
+                                + " FROM "
+                                + " LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STFICHE IRSALIYE WITH (NOLOCK) "
+                                // + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME WITH (NOLOCK)  ON IRSALIYE.OFFERREF = SOZLESME.LOGICALREF AND SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 "
+                                + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH (NOLOCK)  ON IRSALIYE.CLIENTREF = CARI.LOGICALREF "
+                                + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_INVOICE INV WITH (NOLOCK)  ON IRSALIYE.INVOICEREF = INV.LOGICALREF "
+                                + " LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH (NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo
+                                + " LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH (NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
+
+                                + " WHERE IRSALIYE.CANCELLED = 0 AND IRSALIYE.TRCODE IN (7,8) "
+                                + " AND MUSTERI.CODE = '" + BayiKodu + "' ";
+
+                cmdIrsaliyeFis.CommandText = cmdIrsaliyeFis.CommandText + " ORDER BY IRSALIYE.DATE_ DESC";
+                SqlDataReader rdIrsaliyeFis = cmdIrsaliyeFis.ExecuteReader();
+                while (rdIrsaliyeFis.Read())
+                {
+                    IrsaliyeFis irsaliye = new IrsaliyeFis();
+                    irsaliye.stFicheRef = Convert.ToInt32(rdIrsaliyeFis["STFICHELOGICALREF"]);
+                    irsaliye.cariAdi = rdIrsaliyeFis["cariAdi"].ToString();
+                    irsaliye.irsaliyeTarihi = DateTime.Parse(rdIrsaliyeFis["irsaliyeTarihi"].ToString());
+                    irsaliye.irsaliyeNo = rdIrsaliyeFis["irsaliyeNo"].ToString();
+
+                    irsaliye.projeKodu = rdIrsaliyeFis["projeKodu"].ToString();
+                    irsaliye.Sofor = rdIrsaliyeFis["SOFOR"].ToString();
+                    irsaliye.aciklamalar = rdIrsaliyeFis["aciklamalar"].ToString();
+                    //irsaliye.fiyatListesi = rdIrsaliyeFis["baglantiKodu"].ToString();
+                    irsaliye.faturaNo = rdIrsaliyeFis["faturaNo"].ToString();
+
+
+
+                    Irsaliyeler.Add(irsaliye);
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(Irsaliyeler, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+        [WebMethod]
+        public string SiparisFisiSatirIrsaliyeleri(int orfLineRef)
+        {
+            List<SiparisSatirIrsaliye> SatirIrsaliyeler = new List<SiparisSatirIrsaliye>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdSiparisSatirIrsaliye = new SqlCommand();
+                cmdSiparisSatirIrsaliye.Connection = con;
+                cmdSiparisSatirIrsaliye.CommandText =
+                              "SELECT LINE.LOGICALREF AS STLINELREF, FIS.FICHENO AS IRSALIYENO, "
+                              + " FIS.DATE_ AS IRSALIYETARIHI, "
+                              + " LINE.AMOUNT AS MIKTAR, "
+                              + " SETL.CODE AS BIRIM, "
+                              + " ISNULL(INV.FICHENO,'-') AS FATURANO, "
+                              + " FIS.GENEXP1 +' '+FIS.GENEXP2+' '+ FIS.GENEXP3+' '+ FIS.GENEXP4+' '+ FIS.GENEXP5+' '+ FIS.GENEXP6 AS IRSALIYEACIKLAMA  "
+
+                                            + " FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STLINE LINE WITH (NOLOCK) "
+                                            + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_ITEMS ITEM WITH (NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0 "
+                                            + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STFICHE FIS WITH (NOLOCK) ON LINE.STFICHEREF = FIS.LOGICALREF "
+                                            + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_INVOICE INV WITH (NOLOCK) ON FIS.INVOICEREF = INV.LOGICALREF "
+                                            + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL SETL ON LINE.UOMREF = SETL.LOGICALREF "
+                                            + " WHERE LINE.CANCELLED = 0 AND LINE.TRCODE IN (7,8) AND LINE.LINETYPE = 0 AND LINE.ORDTRANSREF = " + orfLineRef;
+
+                SqlDataReader rdSiparisSatirIrsaliye = cmdSiparisSatirIrsaliye.ExecuteReader();
+                while (rdSiparisSatirIrsaliye.Read())
+                {
+                    SiparisSatirIrsaliye irsaliye = new SiparisSatirIrsaliye();
+                    irsaliye.irsaliyeNo = rdSiparisSatirIrsaliye["IRSALIYENO"].ToString();
+                    irsaliye.irsaliyeTarihi = DateTime.Parse(rdSiparisSatirIrsaliye["IRSALIYETARIHI"].ToString());
+                    irsaliye.stlineRef = Convert.ToInt32(rdSiparisSatirIrsaliye["STLINELREF"].ToString());
+                    irsaliye.miktar = String.Format("{0:N}", Convert.ToDouble(rdSiparisSatirIrsaliye["MIKTAR"].ToString()));
+                    irsaliye.birim = rdSiparisSatirIrsaliye["BIRIM"].ToString();
+                    irsaliye.FaturaNo = rdSiparisSatirIrsaliye["FATURANO"].ToString();
+                    irsaliye.IrsaliyeAciklama = rdSiparisSatirIrsaliye["IRSALIYEACIKLAMA"].ToString();
+                    SatirIrsaliyeler.Add(irsaliye);
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(SatirIrsaliyeler, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+        [WebMethod]
+        public string SiparisFisiSatirlari(int OrFicheRef)
+        {
+            List<SiparisSatir> Satirlar = new List<SiparisSatir>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdSiparisSatir = new SqlCommand();
+                cmdSiparisSatir.Connection = con;
+                cmdSiparisSatir.CommandText =
+                   " SELECT LINE.LOGICALREF as ORFLINELOGICAREF,  "
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN "
+                                       + "\n                 (CASE  WHEN LINE.CLOSED = 1 THEN 'M.Kapalı'  "
+                                       + "\n                        WHEN (LINE.SHIPPEDAMOUNT >= LINE.AMOUNT) THEN 'Sevkedilmiş' "
+                                       + "\n                        WHEN ((LINE.SHIPPEDAMOUNT > 0) AND (LINE.SHIPPEDAMOUNT < LINE.AMOUNT)) THEN 'Kısmi Sevk'  "
+                                       + "\n                        ELSE 'Bekliyor' END) "
+                                       + "\n            ELSE '' END) Durum, "
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN ITEM.CODE "
+                                       + "\n            WHEN LINE.LINETYPE = 2 AND GLOBTRANS = 0 THEN 'İndirim' "
+                                       + "\n            WHEN LINE.LINETYPE = 3 AND GLOBTRANS = 0 THEN 'Masraf' "
+                                       + "\n            WHEN LINE.LINETYPE = 2 AND GLOBTRANS = 1 THEN 'Genel İndirim' "
+                                       + "\n            WHEN LINE.LINETYPE = 3 AND GLOBTRANS = 1 THEN 'Genel Masraf' "
+                                       + "\n            ELSE '??' END) AS MalzemeKodu, "
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN ITEM.NAME "
+                                       + "\n            WHEN LINE.LINETYPE = 2 THEN LINE.LINEEXP "
+                                       + "\n            WHEN LINE.LINETYPE = 3 THEN LINE.LINEEXP "
+                                       + "\n            ELSE '??' END) AS Aciklama, "
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN LINE.AMOUNT "
+                                       + "\n            WHEN LINE.LINETYPE = 2 THEN FORMAT(LINE.DISCPER, '#0.##') "
+                                       + "\n            WHEN LINE.LINETYPE = 3 THEN FORMAT(LINE.DISCPER, '#0.##') "
+                                       + "\n            ELSE 0 END) as Miktar,  "
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN SETL.CODE "
+                                       + "\n            WHEN LINE.LINETYPE = 2 THEN '%' "
+                                       + "\n            WHEN LINE.LINETYPE = 3 THEN '%' "
+                                       + "\n            ELSE '??' END) AS Birim, "
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN "
+                                       + "\n               (CASE WHEN LINE.CLOSED = 1 THEN 0 "
+                                       + "\n                     WHEN (LINE.SHIPPEDAMOUNT >= LINE.AMOUNT) THEN 0  "
+                                       + "\n                ELSE (LINE.AMOUNT - LINE.SHIPPEDAMOUNT) END ) "
+                                       + "\n       ELSE 0 END) BekleyenMiktar, "
+
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN(CASE WHEN LINE.VATINC = 1 THEN LINE.PRICE ELSE (LINE.PRICE*(100 + LINE.VAT)/100) END) "
+                                       + "\n            ELSE 0 END ) AS BirimFiyatKdvDahil, "
+
+                                       + "\n     (CASE WHEN LINE.LINETYPE = 0 THEN LINE.VAT "
+                                       + "\n           ELSE 0 END) AS KDV, "
+
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN (CASE WHEN LINE.VATINC = 1 THEN LINE.AMOUNT * LINE.PRICE ELSE LINE.AMOUNT * (LINE.PRICE * (100 + LINE.VAT) /100)  END) "
+                                       + "\n            WHEN LINE.LINETYPE = 2 THEN (CASE WHEN LINE.VATINC = 1 THEN TOTAL ELSE  (TOTAL * 1.18)  END) "
+                                       + "\n            WHEN LINE.LINETYPE = 3 THEN (CASE WHEN LINE.VATINC = 1 THEN TOTAL ELSE  (TOTAL * 1.18)  END) "
+                                       + "\n            ELSE 0 END)  AS Tutar, "
+
+                                       + "\n      (CASE LINE.TRCURR WHEN 0 THEN 'TL' WHEN 20 THEN 'EUR' WHEN 1 THEN 'USD' ELSE '???' END) AS PBirimi "
+
+                                       + "\n      FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE LINE WITH (NOLOCK) "
+                                       + "\n      LEFT JOIN LG_" + IzoKaleFirmaNo + "_ITEMS ITEM WITH(NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0 "
+                                       + "\n      LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL SETL WITH (NOLOCK) ON LINE.UOMREF = SETL.LOGICALREF "
+                                       + "\n      WHERE LINE.CANCELLED = 0 AND LINE.TRCODE = 1 AND LINE.LINETYPE IN(0, 2, 3) "
+                                       + "\n      AND LINE.ORDFICHEREF = " + OrFicheRef + " ORDER BY LINE.LINENO_ ";
+
+
+                SqlDataReader rdSiparisSatir = cmdSiparisSatir.ExecuteReader();
+                while (rdSiparisSatir.Read())
+                {
+                    SiparisSatir satir = new SiparisSatir();
+                    satir.orfLineRef = Convert.ToInt32(rdSiparisSatir["ORFLINELOGICAREF"].ToString());
+
+                    satir.durum = rdSiparisSatir["Durum"].ToString();
+                    satir.malzemeKodu = rdSiparisSatir["MalzemeKodu"].ToString();
+                    satir.Aciklama = rdSiparisSatir["Aciklama"].ToString();
+                    satir.miktar = String.Format("{0:N}", Convert.ToDouble(rdSiparisSatir["Miktar"].ToString()));
+                    satir.birim = rdSiparisSatir["Birim"].ToString();
+                    satir.BekleyenMiktar = String.Format("{0:N}", Convert.ToDouble(rdSiparisSatir["BekleyenMiktar"].ToString()));
+                    satir.birimFiyatKdvDahil = String.Format("{0:N}", Convert.ToDouble(rdSiparisSatir["BirimFiyatKdvDahil"].ToString())) + ' ' + rdSiparisSatir["PBirimi"].ToString();
+
+                    satir.Tutar = String.Format("{0:N}", Convert.ToDouble(rdSiparisSatir["Tutar"].ToString())) + ' ' + rdSiparisSatir["PBirimi"].ToString();
+                    Satirlar.Add(satir);
+
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(Satirlar, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+
+        [WebMethod]
+        public string SiparisFisleri(string BayiKodu)
+        {
+            List<SiparisFis> Siparisler = new List<SiparisFis>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdSiparisFis = new SqlCommand();
+                cmdSiparisFis.Connection = con;
+                cmdSiparisFis.CommandText = "SELECT * FROM ( "
+                                + " SELECT SIPARIS.LOGICALREF AS ORFICHELOGICALREF, "
+                                //   + " (CASE WHEN SIPARIS.STATUS = 1 THEN 'Onay Bekliyor %'+CAST(FLOOR(ISNULL(SIPARISKAPAMA.KAPANAN,0)*100/SIPARIS.NETTOTAL) AS VARCHAR) ELSE '' END) Durum, "
+                                + " CARI.DEFINITION_ AS cariAdi,  "
+                                + " SIPARIS.DATE_ as siparisTarihi, "
+                                + " ISNULL(SIPARIS.FICHENO, ' - ') as siparisNo, "
+                                + " ISNULL(SIPARIS.CUSTORDNO, ' - ') as portalKodu, "
+                                + " SIPARIS.DOCTRACKINGNR AS projeKodu, "
+                                //  + " ISNULL(SOZLESME.DOCODE, ' - ') AS baglantiKodu, "
+
+                                + " (CASE WHEN ( (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ((CLOSED = 1) OR (SHIPPEDAMOUNT>=AMOUNT)) AND ORDFICHEREF = SIPARIS.LOGICALREF ) = (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ORDFICHEREF = SIPARIS.LOGICALREF ) ) THEN 'Sevkedilmiş' "
+                                + "       WHEN ( (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND (CLOSED = 0) AND (SHIPPEDAMOUNT = 0) AND ORDFICHEREF = SIPARIS.LOGICALREF )     = (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ORDFICHEREF = SIPARIS.LOGICALREF ) ) THEN 'Bekliyor' "
+                                + "       ELSE 'Kısmi Sevk' END) AS SIPARISDURUMU, "
+                                + " SIPARIS.GENEXP1 +' '+ SIPARIS.GENEXP2 +' '+SIPARIS.GENEXP3 +' '+SIPARIS.GENEXP4 +' '+ SIPARIS.GENEXP5 +' '+SIPARIS.GENEXP6 AS aciklamalar, "
+                                + " (CASE SIPARIS.TRCURR WHEN 0 THEN 'TL' WHEN 20 THEN 'EUR' WHEN 1 THEN 'USD' ELSE '???' END) AS PARABIRIMI, "
+                                + "  ISNULL((SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE  WITH (NOLOCK) WHERE LINETYPE = 0 AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF),0) AS SiparisTutari, "
+                                + "  ISNULL((SELECT SUM((LINENET) * (100 + VAT) / 100)   FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STLINE  WITH (NOLOCK) WHERE  ORDFICHEREF = SIPARIS.LOGICALREF AND CANCELLED = 0 ),0) AS SevkedilenTutar "
+
+                            + " FROM "
+                                + " LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFICHE SIPARIS WITH (NOLOCK) "
+                                //  + " LEFT JOIN LV_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_PAYTRANSSUM SIPARISKAPAMA WITH (NOLOCK)  ON SIPARISKAPAMA.FICHEREF = SIPARIS.LOGICALREF  "
+                                //  + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME WITH (NOLOCK)  ON SIPARIS.OFFERREF = SOZLESME.LOGICALREF AND SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 "
+                                + " LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH (NOLOCK)  ON SIPARIS.CLIENTREF = CARI.LOGICALREF "
+                                + " LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH (NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo
+                                + " LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH (NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
+                                + " WHERE SIPARIS.CANCELLED = 0 AND SIPARIS.STATUS != 2 AND SIPARIS.TRCODE = 1 "
+                                + " AND MUSTERI.CODE = '" + BayiKodu + "' ";
+
+                cmdSiparisFis.CommandText = cmdSiparisFis.CommandText + " ) AS TUMSORGU";
+
+
+
+                cmdSiparisFis.CommandText = cmdSiparisFis.CommandText + " ORDER BY siparisTarihi DESC";
+                SqlDataReader rdSiparisFis = cmdSiparisFis.ExecuteReader();
+                while (rdSiparisFis.Read())
+                {
+                    SiparisFis siparis = new SiparisFis();
+                    siparis.orFicheRef = Convert.ToInt32(rdSiparisFis["ORFICHELOGICALREF"]);
+                    siparis.cariAdi = rdSiparisFis["cariAdi"].ToString();
+                    siparis.siparisDurumu = rdSiparisFis["SIPARISDURUMU"].ToString();
+                    siparis.siparisTarihi = DateTime.Parse(rdSiparisFis["siparisTarihi"].ToString());
+                    siparis.siparisNo = rdSiparisFis["siparisNo"].ToString();
+                    siparis.portalKodu = rdSiparisFis["portalKodu"].ToString();
+                    siparis.projeKodu = rdSiparisFis["projeKodu"].ToString();
+                    // siparis.fiyatListesi = rdSiparisFis["baglantiKodu"].ToString();
+                    //siparis.Statu = rdSiparisFis["Durum"].ToString();
+                    siparis.aciklamalar = rdSiparisFis["aciklamalar"].ToString();
+                    siparis.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdSiparisFis["SiparisTutari"].ToString())) + ' ' + rdSiparisFis["PARABIRIMI"].ToString();
+                    siparis.sevkedilenTutar = String.Format("{0:N}", Convert.ToDouble(rdSiparisFis["SevkedilenTutar"].ToString())) + ' ' + rdSiparisFis["PARABIRIMI"].ToString();
+                    // siparis.PlanVarmi = Int16.Parse(rdSiparisFis["PlanVarmi"].ToString());
+
+                    Siparisler.Add(siparis);
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(Siparisler, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+        [WebMethod]
+        public string BaglantiBakiyeOzeti(string BayiKodu)
+        {
+            List<FiyatListesiBakiye> Baglantilar = new List<FiyatListesiBakiye>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdBaglantiBakiyeOzeti = new SqlCommand();
+                cmdBaglantiBakiyeOzeti.Connection = con;
+                cmdBaglantiBakiyeOzeti.CommandText =
+
+
+                   " SELECT MusteriKodu, MusteriAdi, BaglantiLREF,  FiyatListesi,  "
+               + "\n	 (CASE WHEN((SabitKurUSD > 1) and(SabitKurEUR > 1)) THEN Aciklama +' [Sabit Kur: ' + SabitKurTarihi + ' USD:' + CAST(SabitKurUSD AS VARCHAR) + ' EUR:' + CAST(SabitKurEUR AS VARCHAR) + ']' "
+               + "\n        WHEN BaglantiTutari > 1 then Aciklama +' [Güncel Dövizli Bağlantı]' "
+               + "\n            ELSE '' "
+               + "\n    END) AS Aciklama, BaglantiTutari, SiparisTutari, Bakiye "
+
+               + "\n     FROM "
+               + "\n     ( "
+               + "\n          SELECT "
+
+               + "\n          MusteriKodu, MusteriAdi, BaglantiLREF, FiyatListesi, "
+               + "\n          MAX(Aciklama) as Aciklama, "
+               + "\n          ISNULL(CONVERT(VARCHAR, (ISNULL(MAX(SabitKurTarihi), 0)), 104), '') AS SabitKurTarihi, "
+               + "\n          MAX(SabitKurUSD) as SabitKurUSD, "
+               + "\n          MAX(SabitKurEUR) AS SabitKurEUR, "
+               + "\n          SUM(BaglantiTutari) AS BaglantiTutari, "
+               + "\n          SUM(SiparisTutari) AS SiparisTutari, "
+               + "\n          (CASE WHEN SUM(BaglantiTutari) = 0 THEN 0  ELSE SUM(BaglantiTutari) - SUM(SiparisTutari)  END) as Bakiye "
+
+
+               + "\n          FROM "
+               + "\n          ( "
+
+
+               + "\n                  SELECT "
+               + "\n                  'Sipariş ' AS Tip, "
+               + "\n                  ISNULL(MUSTERI.CODE, '-') AS MusteriKodu, "
+               + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi, "
+               + "\n                  ISNULL(SOZLESME.DOCODE, ' - ') AS FiyatListesi, "
+               + "\n                  0 AS BaglantiTutari, "
+               + "\n                  (SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE LINETYPE = 0 AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF) AS SiparisTutari, "
+               + "\n                  ISNULL(SOZLESME.LOGICALREF, 0) AS BaglantiLREF, "
+               + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
+               + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi, "
+               + "\n                   ISNULL((SELECT NUMFLDS3 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurUSD, "
+               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR "
+
+               + "\n                  FROM "
+               + "\n                  LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFICHE SIPARIS "
+               + "\n                   LEFT JOIN LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME ON SIPARIS.OFFERREF = SOZLESME.LOGICALREF AND SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 "
+               + "\n                    LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI ON SIPARIS.CLIENTREF = CARI.LOGICALREF "
+               + "\n                     LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo + " "
+               + "\n                      LEFT JOIN IZOKALE_MUSTERILER MUSTERI ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
+               + "\n                  WHERE SIPARIS.CANCELLED = 0 AND SIPARIS.STATUS != 2 AND SIPARIS.TRCODE = 1 AND MUSTERI.CODE = '" + BayiKodu + "' "
+
+
+               + "\n                  UNION ALL "
+
+
+               + "\n                  SELECT "
+               + "\n                  'Sözleşme' AS Tip, "
+               + "\n                  ISNULL(MUSTERI.CODE, '-') AS MusteriKodu, "
+               + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi,  "
+               + "\n                  ISNULL(SOZLESME.DOCODE, ' - ') AS FiyatListesi, "
+               + "\n                  ISNULL(SOZLESME.NETTOTAL, 0) AS BaglantiTutari, "
+               + "\n                  0 AS SiparisTutari, "
+               + "\n                  ISNULL(SOZLESME.LOGICALREF, 0) AS BaglantiLREF, "
+               + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
+               + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi,"
+               + "\n                   ISNULL((SELECT NUMFLDS3 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurUSD, "
+               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR "
+
+               + "\n                  FROM "
+               + "\n                    LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME  "
+               + "\n                     LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI ON SOZLESME.CLIENTREF = CARI.LOGICALREF "
+               + "\n                      LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo + " "
+               + "\n                       LEFT JOIN IZOKALE_MUSTERILER MUSTERI ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
+               + "\n                  WHERE SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 AND MUSTERI.CODE = '" + BayiKodu + "' "
+
+               + "\n          ) AS AA  GROUP BY MusteriKodu,MusteriAdi, FiyatListesi , BaglantiLREF "
+
+               + "\n     ) AS SASAS "
+               + "\n     WHERE(BaglantiTutari > 1) OR(SiparisTutari > 1) "
+
+               + "\n     ORDER BY FiyatListesi DESC ";
+
+
+
+                SqlDataReader rdBaglantiBakiyeOzeti = cmdBaglantiBakiyeOzeti.ExecuteReader();
+                while (rdBaglantiBakiyeOzeti.Read())
+                {
+                    FiyatListesiBakiye baglanti = new FiyatListesiBakiye();
+                    baglanti.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["SiparisTutari"].ToString()));
+                    baglanti.baglantiTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["BaglantiTutari"].ToString()));
+                    baglanti.bakiye = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["Bakiye"].ToString()));
+                    baglanti.fiyatListesiKodu = rdBaglantiBakiyeOzeti["FiyatListesi"].ToString();
+                    baglanti.Aciklama = rdBaglantiBakiyeOzeti["Aciklama"].ToString();
+                    baglanti.baglantiLREF = rdBaglantiBakiyeOzeti["BaglantiLREF"].ToString();
+
+                    Baglantilar.Add(baglanti);
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(Baglantilar, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+
+        [WebMethod]
+        public string HesapOzeti(string BayiKodu)
+        {
+            List<HesapOzeti> HesapOzetiListesi = new List<HesapOzeti>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdHesapOzeti = new SqlCommand();
+                cmdHesapOzeti.Connection = con;
+                cmdHesapOzeti.CommandText =
+
+
+                    " SELECT MusteriKodu, Kodu, Unvani, Aciklama, ISNULL(Sum(Borc), 0) Borc, ISNULL(Sum(Alacak), 0) Alacak, (ISNULL(Sum(Borc), 0) - ISNULL(Sum(Alacak), 0)) as Bakiye "
+
+                    + " FROM( "
+                    + "    SELECT MUSTERI.CODE MusteriKodu, CARI.CODE AS Kodu, SUBSTRING(CARI.DEFINITION_,1,18)+'..' AS Unvani, CARI.DEFINITION2 Aciklama,"
+                    + "        (CASE LINE.SIGN WHEN 0 THEN AMOUNT ELSE 0 END) Borc,  "
+                    + "        (CASE LINE.SIGN WHEN 1 THEN AMOUNT ELSE 0 END) Alacak "
+                    + "        FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_CLFLINE LINE "
+                    + "        LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI WITH(NOLOCK)  ON LINE.CLIENTREF = CARI.LOGICALREF "
+                    + "        LEFT JOIN IZOKALE_MUSTERICARIILISKISI ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo
+                    + "        LEFT JOIN IZOKALE_MUSTERILER MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
+                    + "     WHERE LINE.CANCELLED = 0 AND MUSTERI.CODE = '" + BayiKodu + "' "
+                    + " ) AS aa "
+                    + " GROUP BY MusteriKodu, Kodu, Unvani, Aciklama ";
+
+                SqlDataReader rdHesapOzeti = cmdHesapOzeti.ExecuteReader();
+                while (rdHesapOzeti.Read())
+                {
+                    HesapOzeti Ozet = new HesapOzeti();
+                    Ozet.Kodu = rdHesapOzeti["Kodu"].ToString();
+                    Ozet.Unvani = rdHesapOzeti["Unvani"].ToString();
+                    Ozet.Aciklama = rdHesapOzeti["Aciklama"].ToString();
+
+                    Ozet.Borc = "";
+                    if ((Convert.ToDouble(rdHesapOzeti["Borc"].ToString()) < -0.9) || (Convert.ToDouble(rdHesapOzeti["Borc"].ToString()) > 0.9))
+                    {
+                        Ozet.Borc = String.Format("{0:N}", Convert.ToDouble(rdHesapOzeti["Borc"].ToString())) + " TL";
+                    };
+
+                    Ozet.Alacak = "";
+                    if ((Convert.ToDouble(rdHesapOzeti["Alacak"].ToString()) < -0.9) || (Convert.ToDouble(rdHesapOzeti["Alacak"].ToString()) > 0.9))
+                    {
+                        Ozet.Alacak = String.Format("{0:N}", Convert.ToDouble(rdHesapOzeti["Alacak"].ToString())) + " TL";
+                    }
+
+                    Ozet.Bakiye = "";
+                    if ((Convert.ToDouble(rdHesapOzeti["Bakiye"].ToString()) < -0.9) || (Convert.ToDouble(rdHesapOzeti["Bakiye"].ToString()) > 0.9))
+                    {
+                        Ozet.Bakiye = String.Format("{0:N}", Math.Abs(Convert.ToDouble(rdHesapOzeti["Bakiye"].ToString()))) + " TL";
+
+
+                        if (Convert.ToDouble(rdHesapOzeti["Bakiye"].ToString()) < 0)
+                        {
+                            Ozet.Bakiye = Ozet.Bakiye + " (A)";
+                        }
+                        else
+                        {
+                            Ozet.Bakiye = Ozet.Bakiye + " (B)";
+                        }
+
+                    }
+
+
+                    HesapOzetiListesi.Add(Ozet);
+                }
+
+                con.Close();
+            }
+
+
+            return JsonConvert.SerializeObject(HesapOzetiListesi, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+        [WebMethod]
+        public string MusteriyeBagliCariBilgileri(string BayiKodu)
+        {
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdHesapOzeti = new SqlCommand();
+                cmdHesapOzeti.Connection = con;
+                cmdHesapOzeti.CommandText = "select cart.* from IZOKALE_MUSTERILER musteri inner join [dbo].[IZOKALE_MUSTERICARIILISKISI] iliski on musteri.LOGICALREF=iliski.CSTVNDREF inner join LG_" + IzoKaleFirmaNo + "_CLCARD cart on iliski.ARPREF=cart.LOGICALREF where musteri.CODE='" + BayiKodu + "'";
+                SqlDataReader rdHesapOzeti = cmdHesapOzeti.ExecuteReader();
+                DataTable dt = new DataTable();
+                dt.Load(rdHesapOzeti);
+                con.Close();
+                return JsonConvert.SerializeObject(dt);
+            }
+
+        }
+
+        [WebMethod]
+        public string WCFOdemePlanlari()
+        {
+            List<WCFOdemePlani> odemePlanlari = new List<WCFOdemePlani>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+                cmd.CommandText =
+
+                    "    SELECT CODE OdemePlaniKodu, DEFINITION_  AS OdemePlaniAciklamasi "
+                    + "        FROM LG_" + IzoKaleFirmaNo + "_PAYPLANS WITH(NOLOCK) WHERE ACTIVE = 0  ORDER BY CODE ASC ";
+
+                SqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    WCFOdemePlani odemePlani = new WCFOdemePlani();
+                    odemePlani.OdemePlaniKodu = rd["OdemePlaniKodu"].ToString();
+                    odemePlani.OdemePlaniAciklamasi = rd["OdemePlaniAciklamasi"].ToString();
+                    odemePlanlari.Add(odemePlani);
+                }
+
+                con.Close();
+            }
+            return JsonConvert.SerializeObject(odemePlanlari, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+        [WebMethod]
+        public string WCFSatisElemanlari()
+        {
+            List<WCFSatisElemani> satisElemanlari = new List<WCFSatisElemani>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+                cmd.CommandText =
+
+                    "    SELECT CODE SatisElemaniKodu, DEFINITION_  AS SatisElemaniAciklamasi "
+                    + "        FROM LG_SLSMAN WITH(NOLOCK) WHERE ACTIVE = 0 AND (FIRMNR = " + IzoKaleFirmaNo + " OR FIRMNR = -1) ORDER BY DEFINITION_ ASC";
+
+                SqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    WCFSatisElemani satisElemani = new WCFSatisElemani();
+                    satisElemani.SatisElemaniKodu = rd["SatisElemaniKodu"].ToString();
+                    satisElemani.SatisElemaniAciklamasi = rd["SatisElemaniAciklamasi"].ToString();
+                    satisElemanlari.Add(satisElemani);
+                }
+
+                con.Close();
+            }
+
+            return JsonConvert.SerializeObject(satisElemanlari, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+
+        }
+
+
+        [WebMethod]
+        public string IsyeriBilgileri()
+        {
+            List<WCFIsYeri> IsyeriBilgileri = new List<WCFIsYeri>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+                cmd.CommandText = "select NR as IsYeriKodu,NAME IsYeriAdi from L_CAPIDIV where FIRMNR=" + IzoKaleFirmaNo;
+                SqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    int isYeriNo = Convert.ToInt32(rd["IsYeriKodu"].ToString());
+                    WCFIsYeri IsyeriBilgisi = new WCFIsYeri();
+                    IsyeriBilgisi.IsYeriAciklamasi = rd["IsYeriAdi"].ToString();
+                    IsyeriBilgisi.IsYeriKodu = (isYeriNo >= 100) ? isYeriNo.ToString() : (isYeriNo >= 10) ? "0" + isYeriNo : "00" + isYeriNo;
+                    IsyeriBilgileri.Add(IsyeriBilgisi);
+                }
+
+                con.Close();
+            }
+            return JsonConvert.SerializeObject(IsyeriBilgileri, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+        }
+
+
+        [WebMethod]
+        public string FabrikaBilgileri()
+        {
+            List<WCFFabrika> FabrikaBilgileri = new List<WCFFabrika>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+                cmd.CommandText = "select NR as FabrikaKodu,NAME FabrikaAdi from L_CAPIFACTORY where FIRMNR=" + IzoKaleFirmaNo;
+                SqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    int FabrikaNo = Convert.ToInt32(rd["FabrikaKodu"].ToString());
+                    WCFFabrika FabrikaBilgisi = new WCFFabrika();
+                    FabrikaBilgisi.FabrikaAciklamasi = rd["FabrikaAdi"].ToString();
+                    FabrikaBilgisi.FabrikaKodu = (FabrikaNo >= 100) ? FabrikaNo.ToString() : (FabrikaNo >= 10) ? "0" + FabrikaNo : "00" + FabrikaNo;
+                    FabrikaBilgileri.Add(FabrikaBilgisi);
+                }
+
+                con.Close();
+            }
+            return JsonConvert.SerializeObject(FabrikaBilgileri, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+        }
+
+        [WebMethod]
+        public string BolumBilgileri()
+        {
+            List<WCFBolum> BolumBilgileri = new List<WCFBolum>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+                cmd.CommandText = "select NR as BolumKodu,NAME BolumAdi from L_CAPIDEPT where FIRMNR=" + IzoKaleFirmaNo;
+                SqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    int BolumNo = Convert.ToInt32(rd["BolumKodu"].ToString());
+                    WCFBolum BolumBilgisi = new WCFBolum();
+                    BolumBilgisi.BolumAciklamasi = rd["BolumAdi"].ToString();
+                    BolumBilgisi.BolumKodu = (BolumNo >= 100) ? BolumNo.ToString() : (BolumNo >= 10) ? "0" + BolumNo : "00" + BolumNo;
+                    BolumBilgileri.Add(BolumBilgisi);
+                }
+
+                con.Close();
+            }
+            return JsonConvert.SerializeObject(BolumBilgileri, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+        }
+
+
+        [WebMethod]
+        public string AmbarBilgileri()
+        {
+            List<WCFAmbar> AmbarBilgileri = new List<WCFAmbar>();
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+                cmd.CommandText = "select NR as AmbarKodu,NAME AmbarAdi from L_CAPIWHOUSE where FIRMNR=" + IzoKaleFirmaNo;
+                SqlDataReader rd = cmd.ExecuteReader();
+                while (rd.Read())
+                {
+                    int AmbarNo = Convert.ToInt32(rd["AmbarKodu"].ToString());
+                    WCFAmbar AmbarBilgisi = new WCFAmbar();
+                    AmbarBilgisi.AmbarAciklamasi = rd["AmbarAdi"].ToString();
+                    AmbarBilgisi.AmbarKodu = (AmbarNo >= 100) ? AmbarNo.ToString() : (AmbarNo >= 10) ? "0" + AmbarNo : "00" + AmbarNo;
+                    AmbarBilgileri.Add(AmbarBilgisi);
+                }
+
+                con.Close();
+            }
+            return JsonConvert.SerializeObject(AmbarBilgileri, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+        }
+
+        public bool M2BMukerrerKayitKontrol(string MusteriSiparisNo)
+        {
+            bool resultsonuc = false;
+            using (SqlConnection sqlcon = new SqlConnection(IzoKaleConnectionString))
+            {
+                using (SqlCommand _sqlcomm = new SqlCommand())
+                {
+                    _sqlcomm.Connection = sqlcon;
+                    sqlcon.Open();
+                    _sqlcomm.CommandText = " select * from LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFICHE WHERE CUSTORDNO='" + MusteriSiparisNo + "'";
+                    SqlDataReader dr;
+                    dr = _sqlcomm.ExecuteReader();
+                    while (dr.Read())
+                    {
+                        resultsonuc = true;
+                    }
+                }
+            }
+            return resultsonuc;
+        }
+        public string PlakaKoduBul(string il)
+        {
+            string PlakaKodu = null;
+            il = il.ToUpper();
+            switch (il)
+            {
+                case "ADANA":
+                    PlakaKodu = "01";
+                    break;
+
+                case "ADIYAMAN":
+                    PlakaKodu = "02";
+                    break;
+
+                case "AFYONKARAHİSAR":
+                    PlakaKodu = "03";
+                    break;
+
+                case "AĞRI":
+                    PlakaKodu = "04";
+                    break;
+
+                case "AMASYA":
+                    PlakaKodu = "05";
+                    break;
+
+                case "ANKARA":
+                    PlakaKodu = "06";
+                    break;
+
+                case "ANTALYA":
+                    PlakaKodu = "07";
+                    break;
+
+                case "ARTVİN":
+                    PlakaKodu = "08";
+                    break;
+
+                case "AYDIN":
+                    PlakaKodu = "09";
+                    break;
+
+                case "BALIKESİR":
+                    PlakaKodu = "10";
+                    break;
+
+                case "BİLECİK":
+                    PlakaKodu = "11";
+                    break;
+
+                case "BİNGÖL":
+                    PlakaKodu = "12";
+                    break;
+
+                case "BİTLİS":
+                    PlakaKodu = "13";
+                    break;
+
+                case "BOLU":
+                    PlakaKodu = "14";
+                    break;
+
+                case "BURDUR":
+                    PlakaKodu = "15";
+                    break;
+
+                case "BURSA":
+                    PlakaKodu = "16";
+                    break;
+
+                case "ÇANAKKALE":
+                    PlakaKodu = "17";
+                    break;
+
+                case "ÇANKIRI":
+                    PlakaKodu = "18";
+                    break;
+
+                case "ÇORUM":
+                    PlakaKodu = "19";
+                    break;
+
+                case "DENİZLİ":
+                    PlakaKodu = "20";
+                    break;
+
+                case "DİYARBAKIR":
+                    PlakaKodu = "21";
+                    break;
+
+                case "EDİRNE":
+                    PlakaKodu = "22";
+                    break;
+
+                case "ELAZIĞ":
+                    PlakaKodu = "23";
+                    break;
+
+                case "ERZİNCAN":
+                    PlakaKodu = "24";
+                    break;
+
+                case "ERZURUM":
+                    PlakaKodu = "25";
+                    break;
+
+                case "ESKİŞEHİR":
+                    PlakaKodu = "26";
+                    break;
+
+                case "GAZİANTEP":
+                    PlakaKodu = "27";
+                    break;
+
+                case "GİRESUN":
+                    PlakaKodu = "28";
+                    break;
+
+                case "GÜMÜŞHANE":
+                    PlakaKodu = "29";
+                    break;
+
+                case "HAKKARİ":
+                    PlakaKodu = "30";
+                    break;
+
+                case "HATAY":
+                    PlakaKodu = "31";
+                    break;
+
+                case "ISPARTA":
+                    PlakaKodu = "32";
+                    break;
+
+                case "MERSİN":
+                    PlakaKodu = "33";
+                    break;
+
+                case "İSTANBUL":
+                    PlakaKodu = "34";
+                    break;
+                case "İSTANBUL AVRUPA":
+                    PlakaKodu = "34";
+                    break;
+                case "İSTANBUL ANADOLU":
+                    PlakaKodu = "34";
+                    break;
+
+                case "İZMİR":
+                    PlakaKodu = "35";
+                    break;
+
+                case "KARS":
+                    PlakaKodu = "36";
+                    break;
+
+                case "KASTAMONU":
+                    PlakaKodu = "37";
+                    break;
+
+                case "KAYSERİ":
+                    PlakaKodu = "38";
+                    break;
+
+                case "KIRKLARELİ":
+                    PlakaKodu = "39";
+                    break;
+
+                case "KIRŞEHİR":
+                    PlakaKodu = "40";
+                    break;
+
+                case "KOCAELİ":
+                    PlakaKodu = "41";
+                    break;
+
+                case "İZMİT":
+                    PlakaKodu = "41";
+                    break;
+
+                case "KONYA":
+                    PlakaKodu = "42";
+                    break;
+
+                case "KÜTAHYA":
+                    PlakaKodu = "43";
+                    break;
+
+                case "MALATYA":
+                    PlakaKodu = "44";
+                    break;
+
+                case "MANİSA":
+                    PlakaKodu = "45";
+                    break;
+
+                case "KAHRAMANMARAŞ":
+                    PlakaKodu = "46";
+                    break;
+
+                case "MARAŞ":
+                    PlakaKodu = "46";
+                    break;
+
+                case "MARDİN":
+                    PlakaKodu = "47";
+                    break;
+
+                case "MUĞLA":
+                    PlakaKodu = "48";
+                    break;
+
+                case "MUŞ":
+                    PlakaKodu = "49";
+                    break;
+
+                case "NEVŞEHİR":
+                    PlakaKodu = "50";
+                    break;
+
+                case "NİĞDE":
+                    PlakaKodu = "51";
+                    break;
+
+                case "ORDU":
+                    PlakaKodu = "52";
+                    break;
+
+                case "RİZE":
+                    PlakaKodu = "53";
+                    break;
+
+                case "SAKARYA":
+                    PlakaKodu = "54";
+                    break;
+
+                case "ADAPAZARI":
+                    PlakaKodu = "54";
+                    break;
+
+                case "SAMSUN":
+                    PlakaKodu = "55";
+                    break;
+
+                case "SİİRT":
+                    PlakaKodu = "56";
+                    break;
+
+                case "SİNOP":
+                    PlakaKodu = "57";
+                    break;
+
+                case "SİVAS":
+                    PlakaKodu = "58";
+                    break;
+
+                case "TEKİRDAĞ":
+                    PlakaKodu = "59";
+                    break;
+
+                case "TOKAT":
+                    PlakaKodu = "60";
+                    break;
+
+                case "TRABZON":
+                    PlakaKodu = "61";
+                    break;
+
+                case "TUNCELİ":
+                    PlakaKodu = "62";
+                    break;
+
+                case "ŞANLIURFA":
+                    PlakaKodu = "63";
+                    break;
+
+                case "UŞAK":
+                    PlakaKodu = "64";
+                    break;
+
+                case "VAN":
+                    PlakaKodu = "65";
+                    break;
+
+                case "YOZGAT":
+                    PlakaKodu = "66";
+                    break;
+
+                case "ZONGULDAK":
+                    PlakaKodu = "67";
+                    break;
+
+                case "AKSARAY":
+                    PlakaKodu = "68";
+                    break;
+
+                case "BAYBURT":
+                    PlakaKodu = "69";
+                    break;
+
+                case "KARAMAN":
+                    PlakaKodu = "70";
+                    break;
+
+                case "KIRIKKALE":
+                    PlakaKodu = "71";
+                    break;
+
+                case "BATMAN":
+                    PlakaKodu = "72";
+                    break;
+
+                case "ŞIRNAK":
+                    PlakaKodu = "73";
+                    break;
+
+                case "BARTIN":
+                    PlakaKodu = "74";
+                    break;
+
+                case "ARDAHAN":
+                    PlakaKodu = "75";
+                    break;
+
+                case "IĞDIR":
+                    PlakaKodu = "76";
+                    break;
+
+                case "YALOVA":
+                    PlakaKodu = "77";
+                    break;
+
+                case "KARABÜK":
+                    PlakaKodu = "78";
+                    break;
+
+                case "KİLİS":
+                    PlakaKodu = "79";
+                    break;
+
+                case "OSMANİYE":
+                    PlakaKodu = "80";
+                    break;
+
+                case "DÜZCE":
+                    PlakaKodu = "81";
+                    break;
+            }
+
+            return PlakaKodu;
+        }
+        public string Ilcekodugetir(string _ilce, string _il)
+        {
+            string ilcekodu = "";
+            try
+            {
+                using (SqlConnection sqlcon = new SqlConnection(IzoKaleConnectionString))
+                {
+                    using (SqlCommand _sqlcomm = new SqlCommand())
+                    {
+                        _sqlcomm.Connection = sqlcon;
+                        sqlcon.Open();
+                        _sqlcomm.CommandText = "SELECT TOP 1 CODE FROM L_TOWN WHERE NAME='" + _ilce + "' AND CTYREF =(SELECT CODE FROM L_CITY WHERE CODE='" + _il + "')";
+                        try
+                        {
+                            ilcekodu = _sqlcomm.ExecuteScalar().ToString();
+                        }
+                        catch (Exception ex)
+                        {
+                            ilcekodu = null;
+                        }
+                        sqlcon.Close();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ilcekodu = null;
+            }
+
+            return ilcekodu;
+        }
+        public string YeniSevkiyatKoduOlustur()
+        {
+            string resultsevkiyatkodu = "";
+            try
+            {
+                using (SqlConnection sqlcon = new SqlConnection(IzoKaleConnectionString))
+                {
+                    using (SqlCommand _sqlcomm = new SqlCommand())
+                    {
+                        _sqlcomm.Connection = sqlcon;
+                        sqlcon.Open();
+                        _sqlcomm.CommandText = " select max(code)+1 as num_ from LG_" + IzoKaleFirmaNo + "_SHIPINFO WHERE ISNumeric(CODE)=1";
+                        try
+                        {
+                            resultsevkiyatkodu = _sqlcomm.ExecuteScalar().ToString();
+                        }
+                        catch (Exception ex)
+                        {
+                            resultsevkiyatkodu = null;
+                        }
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                resultsevkiyatkodu = "YeniSevkiyatKoduOlustur kısmında hata!\n" + ex.ToString();
+            }
+            return resultsevkiyatkodu;
+
+
+
+        }
+
+        public string CariSevkAdresiKoduGetir(string CariKod, CariSevkAdresi _gelenAdresBilgileri, string YetkiKodu, string Ulke, string UlkeKodu)
+        {
+            string resultCariSevkKodu = "";
+            YetkiKodu = "1";
+            
+            obj.Login("LOGOFLOW", "1234", 121);
+            if (obj.LoggedIn)
+            {
+
+            }
+            else
+            {
+                return "Objeye Bağlanılamadı";
+            }
+            try
+            {
+                using (SqlConnection sqlcon = new SqlConnection(IzoKaleConnectionString))
+                {
+                    using (SqlCommand sqlcmd = new SqlCommand())
+                    {
+                        sqlcmd.CommandText = "SELECT TOP 1 * FROM LG_" + IzoKaleFirmaNo + @"_SHIPINFO WHERE 
+                                                    CLIENTREF=(SELECT LOGICALREF FROM LG_" + IzoKaleFirmaNo + "_CLCARD WHERE CODE='" + CariKod + @"' AND ACTIVE=0) 
+                                                    AND NAME='" + _gelenAdresBilgileri.AdresBasligi + @"'
+                                                    AND ADDR1='" + _gelenAdresBilgileri.Adres1 + @"' 
+                                                    AND ADDR2='" + _gelenAdresBilgileri.Adres2 + @"'
+                                                    AND UPPER(CITY)=UPPER('" + _gelenAdresBilgileri.Il + @"')
+                                                AND UPPER(TOWN)=UPPER('" + _gelenAdresBilgileri.Ilce + @"') AND ACTIVE=0";
+                        SqlDataReader dr;
+                        sqlcmd.Connection = sqlcon;
+                        sqlcon.Open();
+                        dr = sqlcmd.ExecuteReader();
+                        bool varmi = false;
+                        while (dr.Read())
+                        {
+                            varmi = true;
+                            //if (_gelenAdresBilgileri.Adres1 == dr["ADDR1"].ToString() && _gelenAdresBilgileri.Adres2 == dr["ADDR2"].ToString() && _gelenAdresBilgileri.Il.ToUpper() == dr["CITY"].ToString().ToUpper() && _gelenAdresBilgileri.Ilce.ToUpper() == dr["TOWN"].ToString().ToUpper())
+                            //{
+                            resultCariSevkKodu = "OK " + dr["Code"].ToString();
+                            //}
+                            //else
+                            //{
+                            //Update sorgusunu yaz sana zahmet
+                            //}
+                        }
+                        if (!varmi)
+                        {
+
+
+
+                            //İl Plaka Kodunu Bul
+                            string ilPlakakodu = PlakaKoduBul(_gelenAdresBilgileri.Il.ToUpper());
+                            if (ilPlakakodu == null)
+                            {
+                                obj.Disconnect();
+                                return "İl/Şehir Bilgisinin Logo'da Karşılığı yok :" + _gelenAdresBilgileri.Il;
+                            }
+                            string ilcekodu = Ilcekodugetir(_gelenAdresBilgileri.Ilce.ToUpper(), ilPlakakodu);
+                            if (ilcekodu == null)
+                            {
+                                obj.Disconnect();
+                                return "İlçe Bilgisinin Logo'da Karşılığı yok :" + _gelenAdresBilgileri.Ilce;
+                            }
+                            //sevk kodu oluştur
+                            string sevkkodu = YeniSevkiyatKoduOlustur();
+                            if (sevkkodu == null)
+                            {
+                                obj.Disconnect();
+                                return "Uygun Sevkiyat Kodu Oluşturulamadı!";
+                            }
+                            //--------------------
+                            //********************************
+                           
+                            var item = obj.NewDataObject(UnityObjects.DataObjectType.doArpShipLic);
+                            item.New();
+                            item.DataFields.FieldByName("ARP_CODE").Value = CariKod;
+                            item.DataFields.FieldByName("CODE").Value = sevkkodu;
+                            item.DataFields.FieldByName("DESCRIPTION").Value = _gelenAdresBilgileri.AdresBasligi;
+                            item.DataFields.FieldByName("TITLE").Value = _gelenAdresBilgileri.Aciklama1;
+                            item.DataFields.FieldByName("AUTH_CODE").Value = YetkiKodu;
+                            item.DataFields.FieldByName("ADDRESS1").Value = _gelenAdresBilgileri.Adres1;
+                            item.DataFields.FieldByName("ADDRESS2").Value = _gelenAdresBilgileri.Adres2;
+                            item.DataFields.FieldByName("TOWN_CODE").Value = ilcekodu;
+                            item.DataFields.FieldByName("TOWN").Value = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(_gelenAdresBilgileri.Ilce.ToLower());
+                            item.DataFields.FieldByName("CITY_CODE").Value = ilPlakakodu;
+                            item.DataFields.FieldByName("CITY").Value = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(_gelenAdresBilgileri.Il.ToLower());
+                            item.DataFields.FieldByName("COUNTRY_CODE").Value = UlkeKodu;
+                            item.DataFields.FieldByName("COUNTRY").Value = Ulke;
+                            item.DataFields.FieldByName("POSTAL_CODE").Value = ilPlakakodu;
+                            item.DataFields.FieldByName("SHIP_BEG_TIME1").Value = "134217728";
+                            item.DataFields.FieldByName("SHIP_END_TIME1").Value = "288817152";
+                            if (item.Post())
+                            {
+
+                                resultCariSevkKodu = "OK " + sevkkodu;
+
+                            }
+                            else
+                            {
+                                if (item.ErrorCode != 0)
+                                {
+                                    resultCariSevkKodu = "DB Error : (" + item.ErrorCode.ToString() + ") - " + item.DBErrorDesc + " " + sevkkodu;
+                                }
+                                else if (item.ValidateErrors.Count > 0)
+                                {
+                                    for (int i = 0; i < item.ValidateErrors.Count - 1; i++)
+                                    {
+                                        resultCariSevkKodu += ("XML Error : (" + item.ValidateErrors[i].ID.ToString() + ") - " + item.ValidateErrors[i].Error) + " \n";
+                                    }
+                                }
+                            }
+                          
+                            //***********************************
+                            #region
+                            //WCFService.SvcClient LoClient = new WCFService.SvcClient();
+                            //LoClient.Open();
+                            //int DataType = 34;
+                            //int DataRef = 0;
+                            //string DataXml = "";
+                            //string ParamXml = "";
+                            //string ErrorStr = "";
+                            //byte Status = 32;
+
+                            //DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>                                                                        "
+                            //        + "     <ARP_SHIPMENT_LOCATIONS>                                                                                            "
+                            //        + "             <SHIPMENT_LOC DBOP = \"INS\">                                                                               "
+                            //        + "             <ARP_CODE >" + CariKod + "</ARP_CODE>                                                                       "
+                            //        + "             <CODE>" + sevkkodu + "</CODE>                                                                               "
+                            //        + "             <DESCRIPTION>" + _gelenAdresBilgileri.AdresBasligi + "</DESCRIPTION>                                        "
+                            //        + "             <TITLE>" + _gelenAdresBilgileri.Aciklama1 + "</TITLE>                                                       "
+                            //        + "             <AUTH_CODE>" + YetkiKodu + "</AUTH_CODE>                                                                    "
+                            //        + "             <ADDRESS1>" + _gelenAdresBilgileri.Adres1 + "</ADDRESS1>                                                    "
+                            //        + "             <ADDRESS2>" + _gelenAdresBilgileri.Adres2 + "</ADDRESS2>                                                    "
+                            //        + "             <TOWN_CODE>" + ilcekodu + "</TOWN_CODE>                                                                     "
+                            //        + "             <TOWN>" + CultureInfo.CurrentCulture.TextInfo.ToTitleCase(_gelenAdresBilgileri.Ilce.ToLower()) + "</TOWN>   "
+                            //        + "             <CITY_CODE>" + ilPlakakodu + "</CITY_CODE>                                                                  "
+                            //        + "             <CITY>" + CultureInfo.CurrentCulture.TextInfo.ToTitleCase(_gelenAdresBilgileri.Il.ToLower()) + "</CITY>     "
+                            //        + "             <COUNTRY_CODE>" + UlkeKodu + "</COUNTRY_CODE>                                                               "
+                            //        + "             <COUNTRY>" + Ulke + "</COUNTRY>                                                                             "
+                            //        + "             <POSTAL_CODE>" + ilPlakakodu + "000</POSTAL_CODE>                                                                  "
+                            //        + "             <SHIP_BEG_TIME1>134217728</SHIP_BEG_TIME1>                                                                  "
+                            //        + "             <SHIP_END_TIME1>288817152</SHIP_END_TIME1>                                                                  "
+                            //        + "             </SHIPMENT_LOC>                                                                                             "
+                            //        + "     </ARP_SHIPMENT_LOCATIONS>                                                                                           ";
+
+                            //ParamXml = "<?xml version=\"1.0\" encoding=\"utf-16\"?>"
+                            //               + "<Parameters>"
+                            //               + "  <ReplicMode>0</ReplicMode>"
+                            //               + "  <CheckParams>0</CheckParams>" // 0 olsa ambar parametrelerini kontrol et / 1 pasif
+                            //               + "  <CheckRight>0</CheckRight>" // 0 olsa yetkiler aktif / 1 pasif
+                            //               + "  <ApplyCampaign>0</ApplyCampaign>" // kampanya
+                            //               + "  <ApplyCondition>0</ApplyCondition>" // satış koşulu
+                            //               + "  <FillAccCodes>0</FillAccCodes>" // muhasebe kodlarını doldur
+                            //               + "  <FormSeriLotLines>0</FormSeriLotLines>" // 
+                            //               + "  <GetStockLinePrice>0</GetStockLinePrice>" // son satırın istenilen fiyat bilgisini otomatik set etmek için kullanılır
+                            //               + "  <ExportAllData>0</ExportAllData>" // 
+                            //               + "  <Validation>1</Validation>" // 1: logoobject doğrulama yapar, 0 doğrulama yapmaz
+                            //               + "</Parameters>";
+                            //LoClient.AppendDataObject(DataType, ref DataRef, ref DataXml, ref ParamXml, ref ErrorStr, ref Status, LbsLoadSecurityCode, Convert.ToInt32(IzoKaleFirmaNo), SecurityCode);
+                            //if (Status == 4)
+                            //{
+                            //    resultCariSevkKodu = ErrorStr + "\r" + DataXml;
+                            //}
+                            //else
+                            //{
+                            //    resultCariSevkKodu = "OK " + sevkkodu;
+                            //}
+                            #endregion
+                        }
+                        sqlcon.Close();
+                        sqlcon.Dispose();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                resultCariSevkKodu = "CariSevkAdresiKoduGetir kısmında hata!\n" + ex.ToString();
+            }
+           // obj.Disconnect();
+            return resultCariSevkKodu;
+
+        }
+
+        [WebMethod]
+        public String M2BSiparisOlustur(string Ambar, M2BWCFBaslik Baslik, List<M2BWCFTransaction> Transactions, CariSevkAdresi AdresBilgileri)
+        {
+            string retMesaj = "";
+            
+           // obj.Login("LOGOFLOW", "1234", 121);
+            try
+            {
+                //WCFService.SvcClient LoClient = new WCFService.SvcClient();
+                //LoClient.Open();
+
+
+                int DataType = 3;
+                int DataRef = 0;
+                string DataXml = "";
+                string ParamXml = "";
+                string ErrorStr = "";
+                byte Status = 32;
+
+
+                int FirmNr = Convert.ToInt32(IzoKaleFirmaNo);
+                //Mükerrek Kayıt varmı yokmu
+                if (M2BMukerrerKayitKontrol(Baslik.MusteriSiparisNo))
+                {
+                    return "Bu Sipariş Daha Önceden Aktarılmış!";
+                }
+                //--------------------------
+                SqlConnection con = new SqlConnection(IzoKaleConnectionString);
+
+                SqlCommand cmd = new SqlCommand();
+
+                string CariHesapUnvani = "";
+                string AcceptEInv = "0";
+                string ProfileId = "0";
+                cmd.CommandText = "SELECT TOP 1 CODE,DEFINITION_, ACCEPTEINV,PROFILEID FROM LG_" + FirmNr + "_CLCARD WHERE LOGICALREF =  '" + Baslik.CariLREF + "'";
+                cmd.Connection = con;
+                con.Open();
+                string CariKod = "";
+                SqlDataReader rd2 = cmd.ExecuteReader();
+                if (rd2.Read())
+                {
+                    CariHesapUnvani = rd2["DEFINITION_"].ToString();
+                    AcceptEInv = rd2["ACCEPTEINV"].ToString();
+                    ProfileId = rd2["PROFILEID"].ToString();
+                    CariKod = rd2["CODE"].ToString(); ;
+                }
+                rd2.Close();
+                con.Close();
+
+                string SevkAdresiKodu = CariSevkAdresiKoduGetir(CariKod, AdresBilgileri, Baslik.YetkiKodu, "TÜRKİYE", "TR");
+                if (SevkAdresiKodu.Substring(0, 2) == "OK")
+                {
+                    SevkAdresiKodu = SevkAdresiKodu.Substring(3, SevkAdresiKodu.Length - 3);
+                }
+                else
+                {
+                    return SevkAdresiKodu;
+                }
+
+
+
+
+                //
+
+                var guncelTarih = DateTime.Now;
+                int guncelSaat = guncelTarih.Hour;
+                int guncelDk = guncelTarih.Minute;
+                int guncelSn = guncelTarih.Second;
+                int UzunTime = (guncelSaat * 65536 * 256) + (guncelDk * 65536) + (guncelSn * 256);
+
+
+                var item = obj.NewDataObject(UnityObjects.DataObjectType.doSalesOrderSlip);
+                item.New();
+                item.DataFields.FieldByName("NUMBER").Value = "~";
+                item.DataFields.FieldByName("WITH_PAYMENT").Value = "1";
+                item.DataFields.FieldByName("DOC_TRACK_NR").Value = Baslik.DokumanIzlemeNumarasi;
+                item.DataFields.FieldByName("DATE").Value = Baslik.Tarih;
+                item.DataFields.FieldByName("TIME").Value = UzunTime;
+                item.DataFields.FieldByName("AUTH_CODE").Value = Baslik.YetkiKodu;
+                item.DataFields.FieldByName("ARP_CODE").Value = CariKod;
+                item.DataFields.FieldByName("SHIPLOC_CODE").Value = SevkAdresiKodu;
+                item.DataFields.FieldByName("NOTES1").Value = Baslik.Aciklama1;
+                item.DataFields.FieldByName("ITEXT").Value = Baslik.Aciklama1 + ' ' + Baslik.Aciklama2 + ' ' + Baslik.Aciklama3 + ' ' + Baslik.Aciklama4;
+                item.DataFields.FieldByName("ORDER_STATUS").Value = "1";
+                item.DataFields.FieldByName("AUXIL_CODE").Value = Baslik.OzelKod;
+                item.DataFields.FieldByName("PAYMENT_CODE").Value = Baslik.OdemeTipiKodu;
+                item.DataFields.FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                item.DataFields.FieldByName("PROJECT_CODE").Value = Baslik.ProjeKodu;
+                item.DataFields.FieldByName("SHIPMENT_TYPE").Value = Baslik.TeslimSekliKodu;
+                item.DataFields.FieldByName("TRADING_GRP").Value = Baslik.TicariIslemGrubu;
+                item.DataFields.FieldByName("CUST_ORD_NO").Value = Baslik.MusteriSiparisNo;
+                item.DataFields.FieldByName("OFFER_REFERENCE").Value = Baslik.SozlesmeReferansi;
+                item.DataFields.FieldByName("DIVISION").Value = Baslik.Bolum;
+                item.DataFields.FieldByName("DEPARTMENT").Value = Baslik.Isyeri;
+                item.DataFields.FieldByName("FACTORY").Value = Baslik.Fabrika;
+                item.DataFields.FieldByName("SOURCE_WH").Value = Baslik.Ambar;
+                if (AcceptEInv == "1")
+                {
+                    item.DataFields.FieldByName("EINVOICE").Value = "1";
+                    item.DataFields.FieldByName("EINVOICE_PROFILEID").Value = ProfileId;
+
+                }
+                else
+                {
+                    item.DataFields.FieldByName("EINVOICE").Value = "2";
+                    item.DataFields.FieldByName("EARCHIVEDETR_SENDMOD").Value = "2";
+                    item.DataFields.FieldByName("EARCHIVEDETR_INTPAYMENTTYPE").Value = "4";
+                }
+                var transactionstransaction = item.DataFields.FieldByName("TRANSACTIONS").Lines;
+                foreach (M2BWCFTransaction Transaction in Transactions)
+                {
+                    transactionstransaction.AppendLine();
+                    if (Transaction.SatirTipi == 0)
+                    {
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("AUXIL_CODE").Value = Transaction.HareketOzelKodu.Replace('.', ',');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = Transaction.Miktar.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CONV1").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CONV2").Value = "2";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MULTI_ADD_TAX").Value = "0";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("EDT_CURR").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "1";
+
+                    }
+                    if (Transaction.SatirTipi == 2)
+                    {
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = "";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("CALC_TYPE").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = "0";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                    }
+
+                    if (Transaction.SatirTipi == 4)
+                    {
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("CALC_TYPE").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = Transaction.Miktar;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                    }
+                }
+                if (item.Post())
+                {
+
+                    retMesaj = "OK " + DataRef;
+
+                }
+                else
+                {
+                    if (item.ErrorCode != 0)
+                    {
+                        retMesaj = "DB Error : (" + item.ErrorCode.ToString() + ") - " + item.ErrorDesc + " " + DataXml;
+                    }
+                    else if (item.ValidateErrors.Count > 0)
+                    {
+                        for (int i = 0; i < item.ValidateErrors.Count - 1; i++)
+                        {
+                            retMesaj += ("XML Error : (" + item.ValidateErrors[i].ID.ToString() + ") - " + item.ValidateErrors[i].Error) + " \n";
+                        }
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                retMesaj = "Siparişi Oluştur kısmında hata!\n" + ex.ToString();
+
+            }
+
+            obj.Disconnect();
+            #region
+            //DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>  "
+            //           + "         <SALES_ORDERS> "
+            //           + "           <ORDER_SLIP DBOP=\"INS\">"
+            //           + "             <NUMBER>~</NUMBER> "
+            //           + "             <WITH_PAYMENT>1</WITH_PAYMENT> "
+            //           + "             <DOC_TRACK_NR>" + Baslik.DokumanIzlemeNumarasi + "</DOC_TRACK_NR>"
+            //           + "             <DATE>" + Baslik.Tarih + "</DATE>"
+            //           + "             <TIME>" + UzunTime + "</TIME>"
+            //           + "             <AUTH_CODE>" + Baslik.YetkiKodu + "</AUTH_CODE>"
+            //           + "             <ARP_CODE>" + CariKod + "</ARP_CODE> "
+            //           + "             <SHIPLOC_CODE>" + SevkAdresiKodu + "</SHIPLOC_CODE> "
+            //           + "             <NOTES1>" + Baslik.Aciklama1 + "</NOTES1> "
+            //           + "             <ITEXT>" + Baslik.Aciklama1 + ' ' + Baslik.Aciklama2 + ' ' + Baslik.Aciklama3 + ' ' + Baslik.Aciklama4 + "</ITEXT> "
+            //           + "             <ORDER_STATUS>1</ORDER_STATUS> "
+            //           + "              <AUXIL_CODE>" + Baslik.OzelKod + "</AUXIL_CODE>"
+            //           + "              <PAYMENT_CODE>" + Baslik.OdemeTipiKodu + "</PAYMENT_CODE> "
+            //           + "              <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE> "
+            //           + "              <PROJECT_CODE>" + Baslik.ProjeKodu + "</PROJECT_CODE> "
+            //           + "              <SHIPMENT_TYPE>" + Baslik.TeslimSekliKodu + "</SHIPMENT_TYPE> "
+            //           + "              <TRADING_GRP>" + Baslik.TicariIslemGrubu + "</TRADING_GRP> "
+            //           + "              <CUST_ORD_NO>" + Baslik.MusteriSiparisNo + "</CUST_ORD_NO> "
+            //           + "              <OFFER_REFERENCE>" + Baslik.SozlesmeReferansi + "</OFFER_REFERENCE> "
+            //           + "              <DIVISION>0</DIVISION>"
+            //           + "              <DEPARTMENT>0</DEPARTMENT>"
+            //           + "              <FACTORY>0</FACTORY>"
+            //           + "              <SOURCE_WH>" + Ambar + "</SOURCE_WH>";
+
+
+
+            //if (AcceptEInv == "1")
+            //{
+            //    DataXml = DataXml
+            //          + "             <EINVOICE>1</EINVOICE> <EINVOICE_PROFILEID>" + ProfileId + "</EINVOICE_PROFILEID>";
+            //}
+            //else
+            //{
+            //    DataXml = DataXml
+            //        + "             <EINVOICE>2</EINVOICE>  <EARCHIVEDETR_SENDMOD>2</EARCHIVEDETR_SENDMOD><EARCHIVEDETR_INTPAYMENTTYPE>4</EARCHIVEDETR_INTPAYMENTTYPE> ";
+            //}
+
+
+            //DataXml = DataXml + "            <TRANSACTIONS>";
+            //foreach (M2BWCFTransaction Transaction in Transactions)
+            //{
+
+            //    if (Transaction.SatirTipi == 0)
+            //    {
+            //        DataXml = DataXml
+            //           + "              <TRANSACTION>"
+            //           + "                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
+            //           + "                <MASTER_CODE>" + Transaction.MalzemeKodu + "</MASTER_CODE>"
+            //           + "                <AUXIL_CODE>" + Transaction.HareketOzelKodu.Replace('.', ',') + "</AUXIL_CODE>"
+            //           + "                <QUANTITY>" + Transaction.Miktar.ToString().Replace(',', '.') + "</QUANTITY>"
+            //           + "                <PRICE>" + Transaction.BirimFiyat.ToString().Replace(',', '.') + "</PRICE> "
+            //           + "                <TOTAL>" + Transaction.Toplam.ToString().Replace(',', '.') + "</TOTAL>"
+            //           + "                <VAT_RATE>" + Transaction.Kdv.ToString().Replace(',', '.') + "</VAT_RATE>"
+            //           + "                <VAT_INCLUDED>" + Transaction.KdvHaricmi0 + "</VAT_INCLUDED> "
+            //           + "                <TRANS_DESCRIPTION>" + Transaction.SatirAciklamasi + "</TRANS_DESCRIPTION>"
+            //           + "                <UNIT_CODE>" + Transaction.Birim + "</UNIT_CODE>"
+            //           + "                <UNIT_CONV1>1</UNIT_CONV1><UNIT_CONV2>1</UNIT_CONV2> "
+            //           + "                <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE>"
+            //           + "                <MULTI_ADD_TAX>0</MULTI_ADD_TAX><EDT_CURR>1</EDT_CURR> "
+            //           + "                <SOURCE_WH>" + Ambar + "</SOURCE_WH>"
+            //           + "                <DETAILS>"
+            //           + "                </DETAILS>"
+            //           + "              </TRANSACTION>";
+            //    }
+
+            //    if (Transaction.SatirTipi == 2)
+            //    {
+            //        // double tutar = Transaction.Toplam;
+
+            //        if (Transaction.Toplam < 0)
+            //        {
+            //            Transaction.Toplam = -1 * Transaction.Toplam;
+            //        }
+            //        DataXml = DataXml
+            //           + "              <TRANSACTION>"
+            //           + "                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
+            //           + "                <MASTER_CODE></MASTER_CODE>"
+            //           + "                <CALC_TYPE>1</CALC_TYPE>"
+            //           + "                <QUANTITY>0</QUANTITY>"
+            //           + "                <TOTAL>" + Transaction.Toplam.ToString().Replace(',', '.') + "</TOTAL>"
+            //           + "                <TRANS_DESCRIPTION>" + Transaction.SatirAciklamasi + "</TRANS_DESCRIPTION>"
+            //           + "                <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE>"
+            //           + "                <DETAILS></DETAILS>"
+            //           + "                <SOURCE_WH>" + Ambar + "</SOURCE_WH>"
+            //           + "              </TRANSACTION>";
+            //    }
+            //}
+
+            //DataXml = DataXml
+            //           + "            </TRANSACTIONS>"
+            //           + "            <DEFNFLDSLIST></DEFNFLDSLIST>"
+            //           + "            <DEMANDPEGGINGS></DEMANDPEGGINGS>"
+            //           + "          </ORDER_SLIP>"
+            //           + "</SALES_ORDERS>";
+
+            ////return DataXml;
+
+            ////DataXml = StringCompressor.ZipBase64(DataXml);
+
+
+            //ParamXml =
+            //   "<?xml version=\"1.0\" encoding=\"utf-16\"?>"
+            //   + "<Parameters>"
+            //   + "  <ReplicMode>0</ReplicMode>"
+            //   + "  <CheckParams>0</CheckParams>" // 0 olsa ambar parametrelerini kontrol et / 1 pasif
+            //   + "  <CheckRight>0</CheckRight>" // 0 olsa yetkiler aktif / 1 pasif
+            //   + "  <ApplyCampaign>0</ApplyCampaign>" // kampanya
+            //   + "  <ApplyCondition>0</ApplyCondition>" // satış koşulu
+            //   + "  <FillAccCodes>0</FillAccCodes>" // muhasebe kodlarını doldur
+            //   + "  <FormSeriLotLines>0</FormSeriLotLines>" // 
+            //   + "  <GetStockLinePrice>0</GetStockLinePrice>" // son satırın istenilen fiyat bilgisini otomatik set etmek için kullanılır
+            //   + "  <ExportAllData>0</ExportAllData>" // 
+            //   + "  <Validation>1</Validation>" // 1: logoobject doğrulama yapar, 0 doğrulama yapmaz
+            //   + "</Parameters>";
+
+            //// ParamXml = "";
+
+            //LoClient.AppendDataObject(DataType, ref DataRef, ref DataXml, ref ParamXml, ref ErrorStr, ref Status, LbsLoadSecurityCode, FirmNr, SecurityCode);
+            //if (Status == 4)
+            //{
+            //    retMesaj = ErrorStr + "\r" + DataXml;
+            //}
+            //else
+            //{
+            //    retMesaj = "OK " + DataRef.ToString();
+            //}
+
+
+            #endregion
+
+           
+
+            return retMesaj;
+        }
+
+    }
+}
