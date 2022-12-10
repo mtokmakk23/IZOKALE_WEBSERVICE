@@ -112,7 +112,7 @@ namespace IZOKALE_WEBSERVICE.Models
     public class Musteriler
     {
         public string LOGICALREF;
-        public string MusteriAdi;
+        public string BayiAdi;
         public string BayiKodu;
         public string ADDR1;
         public string ADDR2;
@@ -121,7 +121,6 @@ namespace IZOKALE_WEBSERVICE.Models
         public string WEBURL;
         public string TELNR1;
         public string TELNR2;
-        public List<MusteriyeBagliCariler> BagliCariler;
     }
 
     public class MusteriyeBagliCariler
