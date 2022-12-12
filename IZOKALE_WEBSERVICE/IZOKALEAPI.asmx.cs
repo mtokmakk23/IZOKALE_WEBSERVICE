@@ -320,7 +320,7 @@ namespace IZOKALE_WEBSERVICE
                     cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,5)= '" + nakliyeParam1 + IlKodu + "'  and itemSRV.DEFINITION_ like '%" + IlceAdi.ToUpper() + "%'";
 
                 }
-                else if (nakliyeParam2=="NE")
+                else if (nakliyeParam1=="NE")
                 {
                     cmdMalzemeler.CommandText += " where itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
 
