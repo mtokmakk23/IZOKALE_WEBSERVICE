@@ -1027,8 +1027,7 @@ namespace IZOKALE_WEBSERVICE
                     irsaliye.irsaliyeTarihi = DateTime.Parse(rdIrsaliyeFis["irsaliyeTarihi"].ToString());
                     irsaliye.irsaliyeNo = rdIrsaliyeFis["irsaliyeNo"].ToString();
 
-                    irsaliye.projeKodu = rdIrsaliyeFis["projeKodu"].ToString();
-                    irsaliye.Sofor = rdIrsaliyeFis["SOFOR"].ToString();
+                   
                     irsaliye.aciklamalar = rdIrsaliyeFis["aciklamalar"].ToString();
                     //irsaliye.fiyatListesi = rdIrsaliyeFis["baglantiKodu"].ToString();
                     irsaliye.faturaNo = rdIrsaliyeFis["faturaNo"].ToString();
@@ -1242,7 +1241,7 @@ namespace IZOKALE_WEBSERVICE
                     siparis.siparisTarihi = DateTime.Parse(rdSiparisFis["siparisTarihi"].ToString());
                     siparis.siparisNo = rdSiparisFis["siparisNo"].ToString();
                     siparis.portalKodu = rdSiparisFis["portalKodu"].ToString();
-                    siparis.projeKodu = rdSiparisFis["projeKodu"].ToString();
+                   // siparis.projeKodu = rdSiparisFis["projeKodu"].ToString();
                     // siparis.fiyatListesi = rdSiparisFis["baglantiKodu"].ToString();
                     //siparis.Statu = rdSiparisFis["Durum"].ToString();
                     siparis.aciklamalar = rdSiparisFis["aciklamalar"].ToString();

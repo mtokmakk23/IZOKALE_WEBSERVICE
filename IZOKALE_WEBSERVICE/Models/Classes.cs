@@ -175,18 +175,18 @@ namespace IZOKALE_WEBSERVICE.Models
     public class SiparisFis
     {
         public int orFicheRef;
-        public string Statu;
+        //public string Statu;
         public string cariAdi;
         public string siparisNo;
         public string portalKodu;
         public DateTime siparisTarihi;
         public string siparisDurumu; // Tamamen sevkedilmi, kısmi sevk, bekliyor
-        public string projeKodu;
+        //public string projeKodu;
         public string fiyatListesi;
         public string siparisTutari;
         public string sevkedilenTutar;
       
-        public string adresBilgisi;
+        //public string adresBilgisi;
         public string aciklamalar;
 
 
@@ -223,17 +223,12 @@ namespace IZOKALE_WEBSERVICE.Models
         public string irsaliyeNo;
 
         public DateTime irsaliyeTarihi;
-        public string projeKodu;
-        public string Sofor;
+        //public string projeKodu;
+        //public string Sofor;
         public string aciklamalar;
         public string fiyatListesi;
         public string faturaNo;
-        public string tasYunuM2;
-        public string xpsM3;
-        public string epsM3;
-        public string camM2;
-        public string adresBilgisi;
-
+        
     }
 
     public class IrsaliyeSatir
