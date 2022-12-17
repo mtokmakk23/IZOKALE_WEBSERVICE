@@ -171,6 +171,8 @@ namespace IZOKALE_WEBSERVICE.Models
         public string siparisTutari;
         public string bakiye;
         public string baglantiLREF;
+        public string anaGruplar;
+        public double iskontoOrani;
     }
     public class SiparisFis
     {

@@ -372,8 +372,13 @@ namespace IZOKALE_WEBSERVICE
         }
 
         [WebMethod]
-        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
+        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
         {
+            double indirimOrani = 0;
+            if (baglantiLREF!="-1")
+            {
+                indirimOrani = SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF).FirstOrDefault().iskontoOrani;
+            }
             string IlText = "";
             string IlceText = "";
             var IlveIlceleri = JsonConvert.DeserializeObject<List<IlBilgileri>>(IlveIlceleriGetir());
@@ -475,7 +480,11 @@ namespace IZOKALE_WEBSERVICE
                     {
                         malzeme.HesaplanmisBirimFiyatiTL = malzeme.BaseFiyat * Convert.ToDouble(1);
                     }
-
+                    if (indirimOrani!=0)
+                    {
+                        malzeme.HesaplanmisBirimFiyatiTL = malzeme.HesaplanmisBirimFiyatiTL - (malzeme.HesaplanmisBirimFiyatiTL * (indirimOrani / 100));
+                        malzeme.HesaplamaDetayliAciklama += " %" + indirimOrani + " Bağlantı İskontosu";
+                    }
                     malzeme.NakliyeMasrafiTL = nakliyeBilgileri.NakliyeBirimFiyatiTL;
                     if (malzeme.NakliyeMasrafiTL > 0)
                     {
@@ -513,7 +522,7 @@ namespace IZOKALE_WEBSERVICE
         }
 
         [WebMethod]
-        public string SecilebilirFiyatListeleri(string BayiKodu)
+        public List<FiyatListesiBakiye> SecilebilirFiyatListeleri(string BayiKodu)
         {
 
             //List<FiyatListesiBakiye> Baglantilar = new List<FiyatListesiBakiye>();
@@ -562,7 +571,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n	 (CASE WHEN((SabitKurUSD > 1) and(SabitKurEUR > 1)) THEN Aciklama +' [Sabit Kur: ' + SabitKurTarihi + ' USD:' + CAST(SabitKurUSD AS VARCHAR) + ' EUR:' + CAST(SabitKurEUR AS VARCHAR) + ']' "
                + "\n        WHEN BaglantiTutari > 1 then Aciklama +' [Güncel Dövizli Bağlantı]' "
                + "\n            ELSE '' "
-               + "\n    END)+' '+SozlesmeFisNo AS Aciklama, BaglantiTutari, SiparisTutari, Bakiye "
+               + "\n    END)+' '+SozlesmeFisNo AS Aciklama, BaglantiTutari, SiparisTutari, Bakiye,SozlesmeIskontosu "
 
                + "\n     FROM "
                + "\n     ( "
@@ -577,7 +586,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n          MAX(SabitKurEUR) AS SabitKurEUR, "
                + "\n          SUM(BaglantiTutari) AS BaglantiTutari, "
                + "\n          SUM(SiparisTutari) AS SiparisTutari, "
-               + "\n          (CASE WHEN SUM(BaglantiTutari) = 0 THEN 0  ELSE SUM(BaglantiTutari) - SUM(SiparisTutari)  END) as Bakiye "
+               + "\n          (CASE WHEN SUM(BaglantiTutari) = 0 THEN 0  ELSE SUM(BaglantiTutari) - SUM(SiparisTutari)  END) as Bakiye, SozlesmeIskontosu "
 
 
                + "\n          FROM "
@@ -596,7 +605,8 @@ namespace IZOKALE_WEBSERVICE
                + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
                + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi, "
                + "\n                   ISNULL((SELECT NUMFLDS3 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurUSD, "
-               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR "
+               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR, "
+               + "\n                   (select top(1) SPECODE from LG_" + IzoKaleFirmaNo + "_PURCHOFFERLN where ORDFICHEREF=SOZLESME.LOGICALREF order by SPECODE desc) as SozlesmeIskontosu  "
 
                + "\n                  FROM "
                + "\n                  LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFICHE SIPARIS "
@@ -622,7 +632,8 @@ namespace IZOKALE_WEBSERVICE
                + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
                + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi,"
                + "\n                   ISNULL((SELECT NUMFLDS3 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurUSD, "
-               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR "
+               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR, "
+               + "\n                   (select top(1) SPECODE from LG_" + IzoKaleFirmaNo + "_PURCHOFFERLN where ORDFICHEREF=SOZLESME.LOGICALREF order by SPECODE desc) as SozlesmeIskontosu "
 
                + "\n                  FROM "
                + "\n                    LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME  "
@@ -631,7 +642,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n                       LEFT JOIN LG_CSTVND MUSTERI ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
                + "\n                  WHERE SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 AND MUSTERI.CODE = '" + BayiKodu + "' "
 
-               + "\n          ) AS AA  GROUP BY MusteriKodu,MusteriAdi, FiyatListesi , BaglantiLREF "
+               + "\n          ) AS AA  GROUP BY MusteriKodu,MusteriAdi, FiyatListesi , BaglantiLREF,SozlesmeIskontosu "
 
                + "\n     ) AS SASAS "
                + "\n     WHERE(BaglantiTutari > 1) AND (Bakiye > 5000) "
@@ -640,7 +651,7 @@ namespace IZOKALE_WEBSERVICE
 
                 + "\n UNION ALL "
 
-                + "\n SELECT '' AS MusteriKodu, '' AS MusteriAdi, -1 AS BaglantiLREF, CODE AS FiyatListesi, '' as Aciklama, 0 as BaglantiTutari, 0 as SiparisTutari, 0 as Bakiye from LG_" + IzoKaleFirmaNo + "_PROJECT where ACTIVE=0 and SPECODE='001'";
+                + "\n SELECT '' AS MusteriKodu, '' AS MusteriAdi, -1 AS BaglantiLREF, CODE AS FiyatListesi, '' as Aciklama, 0 as BaglantiTutari, 0 as SiparisTutari, 0 as Bakiye,'' as SozlesmeIskontosu from LG_" + IzoKaleFirmaNo + "_PROJECT where ACTIVE=0 and SPECODE='001'";
 
 
 
@@ -658,7 +669,8 @@ namespace IZOKALE_WEBSERVICE
                     baglanti.fiyatListesiKodu = rdBaglantiBakiyeOzeti["FiyatListesi"].ToString();
                     baglanti.Aciklama = rdBaglantiBakiyeOzeti["Aciklama"].ToString();
                     baglanti.baglantiLREF = rdBaglantiBakiyeOzeti["BaglantiLREF"].ToString();
-
+                    baglanti.anaGruplar = "";
+                    baglanti.iskontoOrani = Convert.ToDouble(rdBaglantiBakiyeOzeti["SozlesmeIskontosu"].ToString().Trim() == "" ? "0" : rdBaglantiBakiyeOzeti["SozlesmeIskontosu"].ToString().Trim());
                     Baglantilar.Add(baglanti);
 
 
@@ -667,15 +679,20 @@ namespace IZOKALE_WEBSERVICE
                 con.Close();
             }
 
-            return JsonConvert.SerializeObject(Baglantilar, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+            return Baglantilar.OrderBy(x => x.baglantiLREF).ToList();
 
 
         }
 
 
         [WebMethod]
-        public string AnaGruplar(string FiyatListesi)
+        public string AnaGruplar(string FiyatListesi, string baglantiLREF, string BayiKodu)
         {
+            string secilebilirAnaGruplar = "";
+            foreach (var item in SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF))
+            {
+                secilebilirAnaGruplar = item.anaGruplar;
+            }
 
             List<MenuBasliklari> MenuBasliklari = new List<MenuBasliklari>();
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
@@ -984,21 +1001,21 @@ namespace IZOKALE_WEBSERVICE
         }
 
         [WebMethod]
-        public string MusteriyeSevkRaporu(string BayiKodu,string BaslangicTarih,string BitisTarihi)
+        public string MusteriyeSevkRaporu(string BayiKodu, string BaslangicTarih, string BitisTarihi)
         {
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
             {
                 con.Open();
                 SqlCommand cmdIrsaliyeFis = new SqlCommand();
                 cmdIrsaliyeFis.Connection = con;
-                cmdIrsaliyeFis.CommandText = "SELECT MUSTERI.TITLE as CARIADI,ITEM.CODE as MALZEMEKODU, ITEM.NAME AS MALZEMEADI,SUM(LINE.AMOUNT) as MIKTAR, SETL.CODE AS BIRIM,,ITEM.SPECODE FROM" +
-" LG_121_02_STFICHE FICHE LEFT JOIN"+
-" LG_CVARPASG ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = FICHE.CLIENTREF AND FIRMNO = 121 LEFT JOIN"+
-" LG_CSTVND MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 LEFT JOIN"+
-" LG_121_02_STLINE LINE WITH(NOLOCK) ON FICHE.LOGICALREF = LINE.STFICHEREF LEFT JOIN"+
-" LG_121_ITEMS ITEM WITH(NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0  LEFT JOIN"+
-" LG_121_UNITSETL SETL ON LINE.UOMREF = SETL.LOGICALREF"+
-" WHERE LINE.CANCELLED = 0 AND LINE.TRCODE IN(7,8) AND LINE.LINETYPE = 0 AND MUSTERI.CODE = '"+ BayiKodu + "' AND DOCDATE>= '"+ BaslangicTarih + "' AND DOCDATE <= '"+ BitisTarihi + "'"+
+                cmdIrsaliyeFis.CommandText = "SELECT MUSTERI.TITLE as CARIADI,ITEM.CODE as MALZEMEKODU, ITEM.NAME AS MALZEMEADI,SUM(LINE.AMOUNT) as MIKTAR, SETL.CODE AS BIRIM,ITEM.SPECODE FROM" +
+" LG_121_02_STFICHE FICHE LEFT JOIN" +
+" LG_CVARPASG ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = FICHE.CLIENTREF AND FIRMNO = 121 LEFT JOIN" +
+" LG_CSTVND MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 LEFT JOIN" +
+" LG_121_02_STLINE LINE WITH(NOLOCK) ON FICHE.LOGICALREF = LINE.STFICHEREF LEFT JOIN" +
+" LG_121_ITEMS ITEM WITH(NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0  LEFT JOIN" +
+" LG_121_UNITSETL SETL ON LINE.UOMREF = SETL.LOGICALREF" +
+" WHERE LINE.CANCELLED = 0 AND LINE.TRCODE IN(7,8) AND LINE.LINETYPE = 0 AND MUSTERI.CODE = '" + BayiKodu + "' AND DOCDATE>= '" + BaslangicTarih + "' AND DOCDATE <= '" + BitisTarihi + "'" +
 " group by MUSTERI.CODE,MUSTERI.TITLE,ITEM.CODE,ITEM.NAME,SETL.CODE,ITEM.SPECODE order by SETL.CODE ASC";
                 SqlDataReader rdIrsaliyeFis = cmdIrsaliyeFis.ExecuteReader();
                 var dt = new DataTable();
@@ -1301,7 +1318,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n	 (CASE WHEN((SabitKurUSD > 1) and(SabitKurEUR > 1)) THEN Aciklama +' [Sabit Kur: ' + SabitKurTarihi + ' USD:' + CAST(SabitKurUSD AS VARCHAR) + ' EUR:' + CAST(SabitKurEUR AS VARCHAR) + ']' "
                + "\n        WHEN BaglantiTutari > 1 then Aciklama +' [Güncel Dövizli Bağlantı]' "
                + "\n            ELSE '' "
-               + "\n    END) AS Aciklama, BaglantiTutari, SiparisTutari, Bakiye "
+               + "\n    END) AS Aciklama, BaglantiTutari, SiparisTutari, Bakiye,SozlesmeIskontosu "
 
                + "\n     FROM "
                + "\n     ( "
@@ -1314,7 +1331,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n          MAX(SabitKurEUR) AS SabitKurEUR, "
                + "\n          SUM(BaglantiTutari) AS BaglantiTutari, "
                + "\n          SUM(SiparisTutari) AS SiparisTutari, "
-               + "\n          (CASE WHEN SUM(BaglantiTutari) = 0 THEN 0  ELSE SUM(BaglantiTutari) - SUM(SiparisTutari)  END) as Bakiye "
+               + "\n          (CASE WHEN SUM(BaglantiTutari) = 0 THEN 0  ELSE SUM(BaglantiTutari) - SUM(SiparisTutari)  END) as Bakiye,SozlesmeIskontosu "
 
 
                + "\n          FROM "
@@ -1325,14 +1342,15 @@ namespace IZOKALE_WEBSERVICE
                + "\n                  'Sipariş ' AS Tip, "
                + "\n                  ISNULL(MUSTERI.CODE, '-') AS MusteriKodu, "
                + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi, "
-               + "\n                  ISNULL(SOZLESME.DOCODE, ' - ') AS FiyatListesi, "
+               + "\n                  (select NAME from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=ISNULL(SOZLESME.PROJECTREF, -1)) AS FiyatListesi, "
                + "\n                  0 AS BaglantiTutari, "
                + "\n                  (SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE LINETYPE = 0 AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF) AS SiparisTutari, "
                + "\n                  ISNULL(SOZLESME.LOGICALREF, 0) AS BaglantiLREF, "
                + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
                + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi, "
                + "\n                   ISNULL((SELECT NUMFLDS3 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurUSD, "
-               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR "
+               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR, "
+               + "\n                   (select top(1) SPECODE from LG_" + IzoKaleFirmaNo + "_PURCHOFFERLN where ORDFICHEREF=SOZLESME.LOGICALREF order by SPECODE desc) as SozlesmeIskontosu  "
 
                + "\n                  FROM "
                + "\n                  LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFICHE SIPARIS "
@@ -1350,14 +1368,15 @@ namespace IZOKALE_WEBSERVICE
                + "\n                  'Sözleşme' AS Tip, "
                + "\n                  ISNULL(MUSTERI.CODE, '-') AS MusteriKodu, "
                + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi,  "
-               + "\n                  ISNULL(SOZLESME.DOCODE, ' - ') AS FiyatListesi, "
+               + "\n                  (select NAME from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=ISNULL(SOZLESME.PROJECTREF, -1)) AS FiyatListesi, "
                + "\n                  ISNULL(SOZLESME.NETTOTAL, 0) AS BaglantiTutari, "
                + "\n                  0 AS SiparisTutari, "
                + "\n                  ISNULL(SOZLESME.LOGICALREF, 0) AS BaglantiLREF, "
                + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
                + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi,"
                + "\n                   ISNULL((SELECT NUMFLDS3 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurUSD, "
-               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR "
+               + "\n                   ISNULL((SELECT NUMFLDS4 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurEUR, "
+               + "\n                   (select top(1) SPECODE from LG_" + IzoKaleFirmaNo + "_PURCHOFFERLN where ORDFICHEREF=SOZLESME.LOGICALREF order by SPECODE desc) as SozlesmeIskontosu "
 
                + "\n                  FROM "
                + "\n                    LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME  "
@@ -1366,7 +1385,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n                       LEFT JOIN LG_CSTVND MUSTERI ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
                + "\n                  WHERE SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 AND MUSTERI.CODE = '" + BayiKodu + "' "
 
-               + "\n          ) AS AA  GROUP BY MusteriKodu,MusteriAdi, FiyatListesi , BaglantiLREF "
+               + "\n          ) AS AA  GROUP BY MusteriKodu,MusteriAdi, FiyatListesi , BaglantiLREF,SozlesmeIskontosu "
 
                + "\n     ) AS SASAS "
                + "\n     WHERE(BaglantiTutari > 1) OR(SiparisTutari > 1) "
@@ -1379,12 +1398,13 @@ namespace IZOKALE_WEBSERVICE
                 while (rdBaglantiBakiyeOzeti.Read())
                 {
                     FiyatListesiBakiye baglanti = new FiyatListesiBakiye();
-                    baglanti.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["SiparisTutari"].ToString()));
-                    baglanti.baglantiTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["BaglantiTutari"].ToString()));
-                    baglanti.bakiye = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["Bakiye"].ToString()));
+                    baglanti.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["SiparisTutari"].ToString()))+" TL";
+                    baglanti.baglantiTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["BaglantiTutari"].ToString())) + " TL";
+                    baglanti.bakiye = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["Bakiye"].ToString())) + " TL";
                     baglanti.fiyatListesiKodu = rdBaglantiBakiyeOzeti["FiyatListesi"].ToString();
                     baglanti.Aciklama = rdBaglantiBakiyeOzeti["Aciklama"].ToString();
                     baglanti.baglantiLREF = rdBaglantiBakiyeOzeti["BaglantiLREF"].ToString();
+                    baglanti.iskontoOrani = Convert.ToDouble(rdBaglantiBakiyeOzeti["SozlesmeIskontosu"].ToString().Trim() == "" ? "0" : rdBaglantiBakiyeOzeti["SozlesmeIskontosu"].ToString().Trim());
 
                     Baglantilar.Add(baglanti);
                 }
