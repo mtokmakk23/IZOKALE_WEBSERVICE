@@ -322,7 +322,7 @@ namespace IZOKALE_WEBSERVICE
                 }
                 else if (nakliyeParam1 == "NE")
                 {
-                    cmdMalzemeler.CommandText += " where itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
+                    cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,3)='"+ nakliyeParam1 + "' and itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
 
                 }
                 else
@@ -407,13 +407,12 @@ namespace IZOKALE_WEBSERVICE
                                   " select *," +
                                     " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
                                     " from(" +
-                                    "    select SETL.CODE AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME3 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME3 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
                                     "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
                                     "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
                                     "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
                                    "    from LG_" + IzoKaleFirmaNo + "_ITEMS ITEM" +
-                                    "\n  LEFT JOIN LG_" + IzoKaleFirmaNo + "_ITMUNITA UNITA  WITH (NOLOCK) ON UNITA.ITEMREF = ITEM.LOGICALREF AND UNITA.LINENR = 1 " +
-                                    "\n  LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL SETL  WITH (NOLOCK) ON UNITA.UNITLINEREF = SETL.LOGICALREF " +
+                                    " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETF UNITA  WITH (NOLOCK) ON UNITA.LOGICALREF = ITEM.UNITSETREF " +
                                     " WHERE(ITEM.ACTIVE = 0)   AND(ITEM.SPECODE = '" + SPECODE1 + "') AND ITEM.SPECODE5='FLOW'" +
                                     ")  aaa";
 
