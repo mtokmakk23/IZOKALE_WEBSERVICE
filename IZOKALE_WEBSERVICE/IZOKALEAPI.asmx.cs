@@ -28,15 +28,12 @@ namespace IZOKALE_WEBSERVICE
         public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
         public string SecurityCode = "21ca0918-82be-4eca-9e90-92ea58b11c64";
         public string LbsLoadSecurityCode = "";
-        static UnityObjects.UnityApplication obj;
+        static UnityObjects.UnityApplication obj = new UnityObjects.UnityApplication();
 
 
         public IZOKALEAPI()
         {
-            //if (obj==null)
-            //{
-            //    obj = new UnityObjects.UnityApplication();
-            //}
+            
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
             {
                 con.Open();
@@ -60,22 +57,22 @@ namespace IZOKALE_WEBSERVICE
 
         }
 
-        //[WebMethod]
-        //public string login()
-        //{
+        [WebMethod]
+        public string login()
+        {
 
-        //    obj.Login("LOGOFLOW", "1234", 121);
-        //    if (obj.LoggedIn)
-        //    {
-        //        obj.Disconnect();
-        //        return "bağlantı başarılı";
-        //    }
-        //    else
-        //    {
-        //        return "Objeye Bağlanılamadı";
-        //    }
+            obj.Login("LOGOFLOW", "1234", Convert.ToInt32(IzoKaleFirmaNo));
+            if (obj.LoggedIn)
+            {
+                obj.Disconnect();
+                return "bağlantı başarılı";
+            }
+            else
+            {
+                return obj.GetLastError() + "/" + obj.GetLastErrorString();
+            }
 
-        //}
+        }
         //[WebMethod]
         //public string CariyiBayidenAyir(string LOGICALREF)
         //{
@@ -2172,7 +2169,7 @@ namespace IZOKALE_WEBSERVICE
                             }
                             //--------------------
                             //********************************
-                            obj.Login("LOGOFLOW", "1234", IzoKaleFirmaNo);
+                            obj.Login("LOGOFLOW", "1234", Convert.ToInt32(IzoKaleFirmaNo));
 
                             var item = obj.NewDataObject(UnityObjects.DataObjectType.doArpShipLic);
                             item.New();
@@ -2358,7 +2355,7 @@ namespace IZOKALE_WEBSERVICE
                 int guncelSn = guncelTarih.Second;
                 int UzunTime = (guncelSaat * 65536 * 256) + (guncelDk * 65536) + (guncelSn * 256);
 
-                obj.Login("LOGOFLOW", "1234", IzoKaleFirmaNo);
+                obj.Login("LOGOFLOW", "1234", Convert.ToInt32(IzoKaleFirmaNo));
                 var item = obj.NewDataObject(UnityObjects.DataObjectType.doSalesOrderSlip);
                 item.New();
                 item.DataFields.FieldByName("NUMBER").Value = "~";
