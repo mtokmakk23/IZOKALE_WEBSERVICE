@@ -28,12 +28,11 @@ namespace IZOKALE_WEBSERVICE
         public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
         public string SecurityCode = "21ca0918-82be-4eca-9e90-92ea58b11c64";
         public string LbsLoadSecurityCode = "";
-        static UnityObjects.UnityApplication obj = new UnityObjects.UnityApplication();
 
 
         public IZOKALEAPI()
         {
-            
+
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
             {
                 con.Open();
@@ -57,22 +56,7 @@ namespace IZOKALE_WEBSERVICE
 
         }
 
-        [WebMethod]
-        public string login()
-        {
 
-            obj.Login("LOGOFLOW", "1234", Convert.ToInt32(IzoKaleFirmaNo));
-            if (obj.LoggedIn)
-            {
-                obj.Disconnect();
-                return "bağlantı başarılı";
-            }
-            else
-            {
-                return obj.GetLastError() + "/" + obj.GetLastErrorString();
-            }
-
-        }
         //[WebMethod]
         //public string CariyiBayidenAyir(string LOGICALREF)
         //{
@@ -310,16 +294,17 @@ namespace IZOKALE_WEBSERVICE
 
                 if (nakliyeParam1 == "NB")
                 {
+                    IlceAdi = IlceAdi.ToUpper();
                     if (IlceAdi.ToUpper() == "MERKEZ")
                     {
-                        IlceAdi = IlceAdi.ToUpper();
+                        IlceAdi = IlAdi.ToUpper();
                     }
                     cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,5)= '" + nakliyeParam1 + IlKodu + "'  and itemSRV.DEFINITION_ like '%" + IlceAdi.ToUpper() + "%'";
 
                 }
                 else if (nakliyeParam1 == "NE")
                 {
-                    cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,3)='"+ nakliyeParam1 + "' and itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
+                    cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,3)='" + nakliyeParam1 + "' and itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
 
                 }
                 else
@@ -372,7 +357,7 @@ namespace IZOKALE_WEBSERVICE
         public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
         {
             double indirimOrani = 0;
-            if (baglantiLREF!="-1")
+            if (baglantiLREF != "-1")
             {
                 indirimOrani = SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF).FirstOrDefault().iskontoOrani;
             }
@@ -389,10 +374,7 @@ namespace IZOKALE_WEBSERVICE
                     IlceText = item2.IlceAdi;
                 }
             }
-            if (Ilce.ToLower() == "merkez")
-            {
-                IlceText = "";
-            }
+
 
             List<Malzeme> Malzemeler = new List<Malzeme>();
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
@@ -476,7 +458,7 @@ namespace IZOKALE_WEBSERVICE
                     {
                         malzeme.HesaplanmisBirimFiyatiTL = malzeme.BaseFiyat * Convert.ToDouble(1);
                     }
-                    if (indirimOrani!=0)
+                    if (indirimOrani != 0)
                     {
                         malzeme.HesaplanmisBirimFiyatiTL = malzeme.HesaplanmisBirimFiyatiTL - (malzeme.HesaplanmisBirimFiyatiTL * (indirimOrani / 100));
                         malzeme.HesaplamaDetayliAciklama += " %" + indirimOrani + " Bağlantı İskontosu";
@@ -1394,7 +1376,7 @@ namespace IZOKALE_WEBSERVICE
                 while (rdBaglantiBakiyeOzeti.Read())
                 {
                     FiyatListesiBakiye baglanti = new FiyatListesiBakiye();
-                    baglanti.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["SiparisTutari"].ToString()))+" TL";
+                    baglanti.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["SiparisTutari"].ToString())) + " TL";
                     baglanti.baglantiTutari = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["BaglantiTutari"].ToString())) + " TL";
                     baglanti.bakiye = String.Format("{0:N}", Convert.ToDouble(rdBaglantiBakiyeOzeti["Bakiye"].ToString())) + " TL";
                     baglanti.fiyatListesiKodu = rdBaglantiBakiyeOzeti["FiyatListesi"].ToString();
@@ -2082,7 +2064,7 @@ namespace IZOKALE_WEBSERVICE
                     {
                         _sqlcomm.Connection = sqlcon;
                         sqlcon.Open();
-                        _sqlcomm.CommandText = " select max(code)+1 as num_ from LG_" + IzoKaleFirmaNo + "_SHIPINFO WHERE ISNumeric(CODE)=1";
+                        _sqlcomm.CommandText = "select max(CONVERT(int,REPLACE(CODE,'.','')))+1 as num_ from LG_" + IzoKaleFirmaNo + "_SHIPINFO WHERE ISNumeric(CODE)=1";
                         try
                         {
                             resultsevkiyatkodu = _sqlcomm.ExecuteScalar().ToString();
@@ -2104,13 +2086,29 @@ namespace IZOKALE_WEBSERVICE
 
 
         }
+        static UnityObjects.UnityApplication obj = new UnityObjects.UnityApplication();
+        [WebMethod]
+        public string test()
+        {
 
+            obj.Login("LOGOFLOW", "1234", Convert.ToInt32(IzoKaleFirmaNo));
+            if (obj.LoggedIn)
+            {
+                obj.Disconnect();
+                return "bağlantı başarılı";
+            }
+            else
+            {
+                return obj.GetLastError() + "/" + obj.GetLastErrorString();
+            }
+
+        }
         public string CariSevkAdresiKoduGetir(string CariKod, CariSevkAdresi _gelenAdresBilgileri, string YetkiKodu, string Ulke, string UlkeKodu)
         {
             string resultCariSevkKodu = "";
             YetkiKodu = "1";
 
-           
+
 
             try
             {
@@ -2191,7 +2189,7 @@ namespace IZOKALE_WEBSERVICE
                             item.DataFields.FieldByName("SHIP_END_TIME1").Value = "288817152";
                             if (item.Post())
                             {
-                               
+
                                 resultCariSevkKodu = "OK " + sevkkodu;
 
                             }
@@ -2211,7 +2209,7 @@ namespace IZOKALE_WEBSERVICE
                             }
                             obj.Disconnect();
                             //***********************************
-                            //#region
+                            #region
                             //WCFService.SvcClient LoClient = new WCFService.SvcClient();
                             //LoClient.Open();
                             //int DataType = 34;
@@ -2265,7 +2263,7 @@ namespace IZOKALE_WEBSERVICE
                             //{
                             //    resultCariSevkKodu = "OK " + sevkkodu;
                             //}
-                            //#endregion
+                            #endregion
                         }
                         sqlcon.Close();
                         sqlcon.Dispose();
@@ -2281,7 +2279,7 @@ namespace IZOKALE_WEBSERVICE
                 }
                 resultCariSevkKodu = "CariSevkAdresiKoduGetir kısmında hata!\n" + ex.ToString();
             }
-           
+
             return resultCariSevkKodu;
 
         }
@@ -2291,10 +2289,10 @@ namespace IZOKALE_WEBSERVICE
         {
             string retMesaj = "";
 
-           
+
             try
             {
-              
+
 
 
                 int DataType = 3;
@@ -2359,7 +2357,7 @@ namespace IZOKALE_WEBSERVICE
                 var item = obj.NewDataObject(UnityObjects.DataObjectType.doSalesOrderSlip);
                 item.New();
                 item.DataFields.FieldByName("NUMBER").Value = "~";
-                item.DataFields.FieldByName("WITH_PAYMENT").Value = "1";
+                item.DataFields.FieldByName("WITH_PAYMENT").Value = "0";
                 item.DataFields.FieldByName("DOC_TRACK_NR").Value = Baslik.DokumanIzlemeNumarasi;
                 item.DataFields.FieldByName("DATE").Value = Baslik.Tarih;
                 item.DataFields.FieldByName("TIME").Value = UzunTime;
@@ -2399,50 +2397,53 @@ namespace IZOKALE_WEBSERVICE
                     transactionstransaction.AppendLine();
                     if (Transaction.SatirTipi == 0)
                     {
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("AUXIL_CODE").Value = Transaction.HareketOzelKodu.Replace('.', ',');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("QUANTITY").Value = Transaction.Miktar.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CONV1").Value = "1";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CONV2").Value = "2";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MULTI_ADD_TAX").Value = "0";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("EDT_CURR").Value = "1";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SOURCE_WH").Value = Ambar;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DETAILS").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("AUXIL_CODE").Value = Transaction.HareketOzelKodu.Replace('.', ',');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = Transaction.Miktar.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CONV1").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CONV2").Value = "2";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MULTI_ADD_TAX").Value = "0";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("EDT_CURR").Value = "1";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "1";
 
                     }
                     if (Transaction.SatirTipi == 2)
                     {
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MASTER_CODE").Value = "";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("CALC_TYPE").Value = "1";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("QUANTITY").Value = "0";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DETAILS").Value = "";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = "";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = "0";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DISCOUNT_RATE").Value = Transaction.IndirimOrani.ToString().Replace(',', '.'); ;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+
                     }
 
                     if (Transaction.SatirTipi == 4)
                     {
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("CALC_TYPE").Value = "1";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("QUANTITY").Value = Transaction.Miktar;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DETAILS").Value = "";
-                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = Transaction.Miktar;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+
+
                     }
                 }
                 if (item.Post())
@@ -2467,137 +2468,137 @@ namespace IZOKALE_WEBSERVICE
                 }
                 obj.Disconnect();
                 #region
-                WCFService.SvcClient LoClient = new WCFService.SvcClient();
-                LoClient.Open();
-                DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>  "
-                           + "         <SALES_ORDERS> "
-                           + "           <ORDER_SLIP DBOP=\"INS\">"
-                           + "             <NUMBER>~</NUMBER> "
-                           + "             <WITH_PAYMENT>1</WITH_PAYMENT> "
-                           + "             <DOC_TRACK_NR>" + Baslik.DokumanIzlemeNumarasi + "</DOC_TRACK_NR>"
-                           + "             <DATE>" + Baslik.Tarih + "</DATE>"
-                           + "             <TIME>" + UzunTime + "</TIME>"
-                           + "             <AUTH_CODE>" + Baslik.YetkiKodu + "</AUTH_CODE>"
-                           + "             <ARP_CODE>" + CariKod + "</ARP_CODE> "
-                           + "             <SHIPLOC_CODE>" + SevkAdresiKodu + "</SHIPLOC_CODE> "
-                           + "             <NOTES1>" + Baslik.Aciklama1 + "</NOTES1> "
-                           + "             <ITEXT>" + Baslik.Aciklama1 + ' ' + Baslik.Aciklama2 + ' ' + Baslik.Aciklama3 + ' ' + Baslik.Aciklama4 + "</ITEXT> "
-                           + "             <ORDER_STATUS>1</ORDER_STATUS> "
-                           + "              <AUXIL_CODE>" + Baslik.OzelKod + "</AUXIL_CODE>"
-                           + "              <PAYMENT_CODE>" + Baslik.OdemeTipiKodu + "</PAYMENT_CODE> "
-                           + "              <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE> "
-                           + "              <PROJECT_CODE>" + Baslik.ProjeKodu + "</PROJECT_CODE> "
-                           + "              <SHIPMENT_TYPE>" + Baslik.TeslimSekliKodu + "</SHIPMENT_TYPE> "
-                           + "              <TRADING_GRP>" + Baslik.TicariIslemGrubu + "</TRADING_GRP> "
-                           + "              <CUST_ORD_NO>" + Baslik.MusteriSiparisNo + "</CUST_ORD_NO> "
-                           + "              <OFFER_REFERENCE>" + Baslik.SozlesmeReferansi + "</OFFER_REFERENCE> "
-                           + "              <DIVISION>0</DIVISION>"
-                           + "              <DEPARTMENT>0</DEPARTMENT>"
-                           + "              <FACTORY>0</FACTORY>"
-                           + "              <SOURCE_WH>" + Ambar + "</SOURCE_WH>";
+                //WCFService.SvcClient LoClient = new WCFService.SvcClient();
+                //LoClient.Open();
+                //DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>  "
+                //           + "         <SALES_ORDERS> "
+                //           + "           <ORDER_SLIP DBOP=\"INS\">"
+                //           + "             <NUMBER>~</NUMBER> "
+                //           + "             <WITH_PAYMENT>1</WITH_PAYMENT> "
+                //           + "             <DOC_TRACK_NR>" + Baslik.DokumanIzlemeNumarasi + "</DOC_TRACK_NR>"
+                //           + "             <DATE>" + Baslik.Tarih + "</DATE>"
+                //           + "             <TIME>" + UzunTime + "</TIME>"
+                //           + "             <AUTH_CODE>" + Baslik.YetkiKodu + "</AUTH_CODE>"
+                //           + "             <ARP_CODE>" + CariKod + "</ARP_CODE> "
+                //           + "             <SHIPLOC_CODE>" + SevkAdresiKodu + "</SHIPLOC_CODE> "
+                //           + "             <NOTES1>" + Baslik.Aciklama1 + "</NOTES1> "
+                //           + "             <ITEXT>" + Baslik.Aciklama1 + ' ' + Baslik.Aciklama2 + ' ' + Baslik.Aciklama3 + ' ' + Baslik.Aciklama4 + "</ITEXT> "
+                //           + "             <ORDER_STATUS>1</ORDER_STATUS> "
+                //           + "              <AUXIL_CODE>" + Baslik.OzelKod + "</AUXIL_CODE>"
+                //           + "              <PAYMENT_CODE>" + Baslik.OdemeTipiKodu + "</PAYMENT_CODE> "
+                //           + "              <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE> "
+                //           + "              <PROJECT_CODE>" + Baslik.ProjeKodu + "</PROJECT_CODE> "
+                //           + "              <SHIPMENT_TYPE>" + Baslik.TeslimSekliKodu + "</SHIPMENT_TYPE> "
+                //           + "              <TRADING_GRP>" + Baslik.TicariIslemGrubu + "</TRADING_GRP> "
+                //           + "              <CUST_ORD_NO>" + Baslik.MusteriSiparisNo + "</CUST_ORD_NO> "
+                //           + "              <OFFER_REFERENCE>" + Baslik.SozlesmeReferansi + "</OFFER_REFERENCE> "
+                //           + "              <DIVISION>0</DIVISION>"
+                //           + "              <DEPARTMENT>0</DEPARTMENT>"
+                //           + "              <FACTORY>0</FACTORY>"
+                //           + "              <SOURCE_WH>" + Ambar + "</SOURCE_WH>";
 
 
 
-                if (AcceptEInv == "1")
-                {
-                    DataXml = DataXml
-                          + "             <EINVOICE>1</EINVOICE> <EINVOICE_PROFILEID>" + ProfileId + "</EINVOICE_PROFILEID>";
-                }
-                else
-                {
-                    DataXml = DataXml
-                        + "             <EINVOICE>2</EINVOICE>  <EARCHIVEDETR_SENDMOD>2</EARCHIVEDETR_SENDMOD><EARCHIVEDETR_INTPAYMENTTYPE>4</EARCHIVEDETR_INTPAYMENTTYPE> ";
-                }
+                //if (AcceptEInv == "1")
+                //{
+                //    DataXml = DataXml
+                //          + "             <EINVOICE>1</EINVOICE> <EINVOICE_PROFILEID>" + ProfileId + "</EINVOICE_PROFILEID>";
+                //}
+                //else
+                //{
+                //    DataXml = DataXml
+                //        + "             <EINVOICE>2</EINVOICE>  <EARCHIVEDETR_SENDMOD>2</EARCHIVEDETR_SENDMOD><EARCHIVEDETR_INTPAYMENTTYPE>4</EARCHIVEDETR_INTPAYMENTTYPE> ";
+                //}
 
 
-                DataXml = DataXml + "            <TRANSACTIONS>";
-                foreach (M2BWCFTransaction Transaction in Transactions)
-                {
+                //DataXml = DataXml + "            <TRANSACTIONS>";
+                //foreach (M2BWCFTransaction Transaction in Transactions)
+                //{
 
-                    if (Transaction.SatirTipi == 0)
-                    {
-                        DataXml = DataXml
-                           + "              <TRANSACTION>"
-                           + "                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
-                           + "                <MASTER_CODE>" + Transaction.MalzemeKodu + "</MASTER_CODE>"
-                           + "                <AUXIL_CODE>" + Transaction.HareketOzelKodu.Replace('.', ',') + "</AUXIL_CODE>"
-                           + "                <QUANTITY>" + Transaction.Miktar.ToString().Replace(',', '.') + "</QUANTITY>"
-                           + "                <PRICE>" + Transaction.BirimFiyat.ToString().Replace(',', '.') + "</PRICE> "
-                           + "                <TOTAL>" + Transaction.Toplam.ToString().Replace(',', '.') + "</TOTAL>"
-                           + "                <VAT_RATE>" + Transaction.Kdv.ToString().Replace(',', '.') + "</VAT_RATE>"
-                           + "                <VAT_INCLUDED>" + Transaction.KdvHaricmi0 + "</VAT_INCLUDED> "
-                           + "                <TRANS_DESCRIPTION>" + Transaction.SatirAciklamasi + "</TRANS_DESCRIPTION>"
-                           + "                <UNIT_CODE>" + Transaction.Birim + "</UNIT_CODE>"
-                           + "                <UNIT_CONV1>1</UNIT_CONV1><UNIT_CONV2>1</UNIT_CONV2> "
-                           + "                <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE>"
-                           + "                <MULTI_ADD_TAX>0</MULTI_ADD_TAX><EDT_CURR>1</EDT_CURR> "
-                           + "                <SOURCE_WH>" + Ambar + "</SOURCE_WH>"
-                           + "                <DETAILS>"
-                           + "                </DETAILS>"
-                           + "              </TRANSACTION>";
-                    }
+                //    if (Transaction.SatirTipi == 0)
+                //    {
+                //        DataXml = DataXml
+                //           + "              <TRANSACTION>"
+                //           + "                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
+                //           + "                <MASTER_CODE>" + Transaction.MalzemeKodu + "</MASTER_CODE>"
+                //           + "                <AUXIL_CODE>" + Transaction.HareketOzelKodu.Replace('.', ',') + "</AUXIL_CODE>"
+                //           + "                <QUANTITY>" + Transaction.Miktar.ToString().Replace(',', '.') + "</QUANTITY>"
+                //           + "                <PRICE>" + Transaction.BirimFiyat.ToString().Replace(',', '.') + "</PRICE> "
+                //           + "                <TOTAL>" + Transaction.Toplam.ToString().Replace(',', '.') + "</TOTAL>"
+                //           + "                <VAT_RATE>" + Transaction.Kdv.ToString().Replace(',', '.') + "</VAT_RATE>"
+                //           + "                <VAT_INCLUDED>" + Transaction.KdvHaricmi0 + "</VAT_INCLUDED> "
+                //           + "                <TRANS_DESCRIPTION>" + Transaction.SatirAciklamasi + "</TRANS_DESCRIPTION>"
+                //           + "                <UNIT_CODE>" + Transaction.Birim + "</UNIT_CODE>"
+                //           + "                <UNIT_CONV1>1</UNIT_CONV1><UNIT_CONV2>1</UNIT_CONV2> "
+                //           + "                <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE>"
+                //           + "                <MULTI_ADD_TAX>0</MULTI_ADD_TAX><EDT_CURR>1</EDT_CURR> "
+                //           + "                <SOURCE_WH>" + Ambar + "</SOURCE_WH>"
+                //           + "                <DETAILS>"
+                //           + "                </DETAILS>"
+                //           + "              </TRANSACTION>";
+                //    }
 
-                    if (Transaction.SatirTipi == 2)
-                    {
-                        // double tutar = Transaction.Toplam;
+                //    if (Transaction.SatirTipi == 2)
+                //    {
+                //        // double tutar = Transaction.Toplam;
 
-                        if (Transaction.Toplam < 0)
-                        {
-                            Transaction.Toplam = -1 * Transaction.Toplam;
-                        }
-                        DataXml = DataXml
-                           + "              <TRANSACTION>"
-                           + "                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
-                           + "                <MASTER_CODE></MASTER_CODE>"
-                           + "                <CALC_TYPE>1</CALC_TYPE>"
-                           + "                <QUANTITY>0</QUANTITY>"
-                           + "                <TOTAL>" + Transaction.Toplam.ToString().Replace(',', '.') + "</TOTAL>"
-                           + "                <TRANS_DESCRIPTION>" + Transaction.SatirAciklamasi + "</TRANS_DESCRIPTION>"
-                           + "                <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE>"
-                           + "                <DETAILS></DETAILS>"
-                           + "                <SOURCE_WH>" + Ambar + "</SOURCE_WH>"
-                           + "              </TRANSACTION>";
-                    }
-                }
+                //        if (Transaction.Toplam < 0)
+                //        {
+                //            Transaction.Toplam = -1 * Transaction.Toplam;
+                //        }
+                //        DataXml = DataXml
+                //           + "              <TRANSACTION>"
+                //           + "                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
+                //           + "                <MASTER_CODE></MASTER_CODE>"
+                //           + "                <CALC_TYPE>1</CALC_TYPE>"
+                //           + "                <QUANTITY>0</QUANTITY>"
+                //           + "                <TOTAL>" + Transaction.Toplam.ToString().Replace(',', '.') + "</TOTAL>"
+                //           + "                <TRANS_DESCRIPTION>" + Transaction.SatirAciklamasi + "</TRANS_DESCRIPTION>"
+                //           + "                <SALESMAN_CODE>" + Baslik.SatisElemaniKodu + "</SALESMAN_CODE>"
+                //           + "                <DETAILS></DETAILS>"
+                //           + "                <SOURCE_WH>" + Ambar + "</SOURCE_WH>"
+                //           + "              </TRANSACTION>";
+                //    }
+                //}
 
-                DataXml = DataXml
-                           + "            </TRANSACTIONS>"
-                           + "            <DEFNFLDSLIST></DEFNFLDSLIST>"
-                           + "            <DEMANDPEGGINGS></DEMANDPEGGINGS>"
-                           + "          </ORDER_SLIP>"
-                           + "</SALES_ORDERS>";
+                //DataXml = DataXml
+                //           + "            </TRANSACTIONS>"
+                //           + "            <DEFNFLDSLIST></DEFNFLDSLIST>"
+                //           + "            <DEMANDPEGGINGS></DEMANDPEGGINGS>"
+                //           + "          </ORDER_SLIP>"
+                //           + "</SALES_ORDERS>";
 
-                //return DataXml;
+                ////return DataXml;
 
-                //DataXml = StringCompressor.ZipBase64(DataXml);
+                ////DataXml = StringCompressor.ZipBase64(DataXml);
 
 
-                ParamXml =
-                   "<?xml version=\"1.0\" encoding=\"utf-16\"?>"
-                   + "<Parameters>"
-                   + "  <ReplicMode>0</ReplicMode>"
-                   + "  <CheckParams>0</CheckParams>" // 0 olsa ambar parametrelerini kontrol et / 1 pasif
-                   + "  <CheckRight>0</CheckRight>" // 0 olsa yetkiler aktif / 1 pasif
-                   + "  <ApplyCampaign>0</ApplyCampaign>" // kampanya
-                   + "  <ApplyCondition>0</ApplyCondition>" // satış koşulu
-                   + "  <FillAccCodes>0</FillAccCodes>" // muhasebe kodlarını doldur
-                   + "  <FormSeriLotLines>0</FormSeriLotLines>" // 
-                   + "  <GetStockLinePrice>0</GetStockLinePrice>" // son satırın istenilen fiyat bilgisini otomatik set etmek için kullanılır
-                   + "  <ExportAllData>0</ExportAllData>" // 
-                   + "  <Validation>1</Validation>" // 1: logoobject doğrulama yapar, 0 doğrulama yapmaz
-                   + "</Parameters>";
+                //ParamXml =
+                //   "<?xml version=\"1.0\" encoding=\"utf-16\"?>"
+                //   + "<Parameters>"
+                //   + "  <ReplicMode>0</ReplicMode>"
+                //   + "  <CheckParams>0</CheckParams>" // 0 olsa ambar parametrelerini kontrol et / 1 pasif
+                //   + "  <CheckRight>0</CheckRight>" // 0 olsa yetkiler aktif / 1 pasif
+                //   + "  <ApplyCampaign>0</ApplyCampaign>" // kampanya
+                //   + "  <ApplyCondition>0</ApplyCondition>" // satış koşulu
+                //   + "  <FillAccCodes>0</FillAccCodes>" // muhasebe kodlarını doldur
+                //   + "  <FormSeriLotLines>0</FormSeriLotLines>" // 
+                //   + "  <GetStockLinePrice>0</GetStockLinePrice>" // son satırın istenilen fiyat bilgisini otomatik set etmek için kullanılır
+                //   + "  <ExportAllData>0</ExportAllData>" // 
+                //   + "  <Validation>1</Validation>" // 1: logoobject doğrulama yapar, 0 doğrulama yapmaz
+                //   + "</Parameters>";
 
-                // ParamXml = "";
+                //// ParamXml = "";
 
-                LoClient.AppendDataObject(DataType, ref DataRef, ref DataXml, ref ParamXml, ref ErrorStr, ref Status, LbsLoadSecurityCode, FirmNr, SecurityCode);
-                if (Status == 4)
-                {
-                    retMesaj = ErrorStr + "\r" + DataXml;
-                }
-                else
-                {
-                    retMesaj = "OK " + DataRef.ToString();
-                }
+                //LoClient.AppendDataObject(DataType, ref DataRef, ref DataXml, ref ParamXml, ref ErrorStr, ref Status, LbsLoadSecurityCode, FirmNr, SecurityCode);
+                //if (Status == 4)
+                //{
+                //    retMesaj = ErrorStr + "\r" + DataXml;
+                //}
+                //else
+                //{
+                //    retMesaj = "OK " + DataRef.ToString();
+                //}
                 #endregion
             }
             catch (Exception ex)
@@ -2610,7 +2611,7 @@ namespace IZOKALE_WEBSERVICE
                 retMesaj = "Siparişi Oluştur kısmında hata!\n" + ex.ToString();
 
             }
-          
+
 
 
 
