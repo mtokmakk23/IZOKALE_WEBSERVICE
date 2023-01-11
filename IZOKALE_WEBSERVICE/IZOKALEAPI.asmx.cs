@@ -1,4 +1,18 @@
-﻿using IZOKALE_WEBSERVICE.Models;
+﻿
+
+///https://docs.logo.com.tr/public/wua/logo-objects/logo-objects-baslangic
+/*
+ * comexp.msc /32
+ * 
+ * https://www.youtube.com/watch?v=WRxuse5WUOs&feature=youtu.be
+ * https://www.youtube.com/watch?v=gpxYkEf2uLo&feature=youtu.be 
+ * 
+ * 
+ * http://www.logodestek.gen.tr/index.php?topic=10083.0;wap2
+ * 
+ */
+
+using IZOKALE_WEBSERVICE.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
@@ -353,6 +367,30 @@ namespace IZOKALE_WEBSERVICE
             return NakliyeBilgileri;
         }
 
+        public double BayiIskontosu(string BayiKodu)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+                {
+                    con.Open();
+                    SqlCommand cmdMalzemeler = new SqlCommand();
+                    cmdMalzemeler.Connection = con;
+                    cmdMalzemeler.CommandText =
+                                      "select ISNULL(DISCRATE,0) from LG_" + IzoKaleFirmaNo + "_CLCARD where CODE='" + BayiKodu + "'";
+                    double iskonto = Convert.ToDouble(cmdMalzemeler.ExecuteScalar().ToString().Replace(".", ","));
+                    con.Close();
+                    cmdMalzemeler.Dispose();
+                    return iskonto;
+                }
+            }
+            catch (Exception hata)
+            {
+                return 0;
+            }
+
+
+        }
         [WebMethod]
         public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
         {
@@ -360,6 +398,10 @@ namespace IZOKALE_WEBSERVICE
             if (baglantiLREF != "-1")
             {
                 indirimOrani = SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF).FirstOrDefault().iskontoOrani;
+            }
+            else
+            {
+                indirimOrani = BayiIskontosu(BayiKodu);
             }
             string IlText = "";
             string IlceText = "";
@@ -461,7 +503,7 @@ namespace IZOKALE_WEBSERVICE
                     if (indirimOrani != 0)
                     {
                         malzeme.HesaplanmisBirimFiyatiTL = malzeme.HesaplanmisBirimFiyatiTL - (malzeme.HesaplanmisBirimFiyatiTL * (indirimOrani / 100));
-                        malzeme.HesaplamaDetayliAciklama += " %" + indirimOrani + " Bağlantı İskontosu";
+                        malzeme.HesaplamaDetayliAciklama += " %" + indirimOrani + " " + (baglantiLREF == "-1" ? "Bayi" : "Bağlantı") + " İskontosu";
                     }
                     malzeme.NakliyeMasrafiTL = nakliyeBilgileri.NakliyeBirimFiyatiTL;
                     if (malzeme.NakliyeMasrafiTL > 0)
@@ -647,7 +689,7 @@ namespace IZOKALE_WEBSERVICE
                     baglanti.fiyatListesiKodu = rdBaglantiBakiyeOzeti["FiyatListesi"].ToString();
                     baglanti.Aciklama = rdBaglantiBakiyeOzeti["Aciklama"].ToString();
                     baglanti.baglantiLREF = rdBaglantiBakiyeOzeti["BaglantiLREF"].ToString();
-                    baglanti.anaGruplar = "";
+                    //  baglanti.anaGruplar = "";
                     baglanti.iskontoOrani = Convert.ToDouble(rdBaglantiBakiyeOzeti["SozlesmeIskontosu"].ToString().Trim() == "" ? "0" : rdBaglantiBakiyeOzeti["SozlesmeIskontosu"].ToString().Trim());
                     Baglantilar.Add(baglanti);
 
@@ -666,11 +708,11 @@ namespace IZOKALE_WEBSERVICE
         [WebMethod]
         public string AnaGruplar(string FiyatListesi, string baglantiLREF, string BayiKodu)
         {
-            string secilebilirAnaGruplar = "";
-            foreach (var item in SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF))
-            {
-                secilebilirAnaGruplar = item.anaGruplar;
-            }
+            //string secilebilirAnaGruplar = "";
+            //foreach (var item in SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF))
+            //{
+            //    secilebilirAnaGruplar = item.anaGruplar;
+            //}
 
             List<MenuBasliklari> MenuBasliklari = new List<MenuBasliklari>();
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
@@ -1136,21 +1178,25 @@ namespace IZOKALE_WEBSERVICE
                                        + "\n            WHEN LINE.LINETYPE = 3 AND GLOBTRANS = 0 THEN 'Masraf' "
                                        + "\n            WHEN LINE.LINETYPE = 2 AND GLOBTRANS = 1 THEN 'Genel İndirim' "
                                        + "\n            WHEN LINE.LINETYPE = 3 AND GLOBTRANS = 1 THEN 'Genel Masraf' "
+                                       + "\n            WHEN LINE.LINETYPE = 4 then'Hizmet' "
                                        + "\n            ELSE '??' END) AS MalzemeKodu, "
 
                                        + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN ITEM.NAME "
                                        + "\n            WHEN LINE.LINETYPE = 2 THEN LINE.LINEEXP "
                                        + "\n            WHEN LINE.LINETYPE = 3 THEN LINE.LINEEXP "
+                                       + "\n            WHEN LINE.LINETYPE = 4 THEN 'NAKLİYE' "
                                        + "\n            ELSE '??' END) AS Aciklama, "
 
-                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN LINE.AMOUNT "
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 OR LINE.LINETYPE=4 THEN LINE.AMOUNT "
                                        + "\n            WHEN LINE.LINETYPE = 2 THEN FORMAT(LINE.DISCPER, '#0.##') "
                                        + "\n            WHEN LINE.LINETYPE = 3 THEN FORMAT(LINE.DISCPER, '#0.##') "
                                        + "\n            ELSE 0 END) as Miktar,  "
 
                                        + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN SETL.CODE "
+                                       + "\n            WHEN LINE.LINETYPE = 4 THEN 'Nakliye' "
                                        + "\n            WHEN LINE.LINETYPE = 2 THEN '%' "
                                        + "\n            WHEN LINE.LINETYPE = 3 THEN '%' "
+                                       + "\n            WHEN LINE.LINETYPE = 4 THEN ''  "
                                        + "\n            ELSE '??' END) AS Birim, "
 
                                        + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN "
@@ -1161,12 +1207,13 @@ namespace IZOKALE_WEBSERVICE
 
 
                                        + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN(CASE WHEN LINE.VATINC = 1 THEN LINE.PRICE ELSE (LINE.PRICE*(100 + LINE.VAT)/100) END) "
+                                       + "\n            WHEN LINE.LINETYPE = 4 THEN(CASE WHEN LINE.VATINC = 1 THEN LINE.PRICE ELSE (LINE.PRICE*(100 + LINE.VAT)/100) END)  "
                                        + "\n            ELSE 0 END ) AS BirimFiyatKdvDahil, "
 
-                                       + "\n     (CASE WHEN LINE.LINETYPE = 0 THEN LINE.VAT "
+                                       + "\n     (CASE WHEN LINE.LINETYPE = 0 OR LINE.LINETYPE = 4 THEN LINE.VAT "
                                        + "\n           ELSE 0 END) AS KDV, "
 
-                                       + "\n      (CASE WHEN LINE.LINETYPE = 0 THEN (CASE WHEN LINE.VATINC = 1 THEN LINE.AMOUNT * LINE.PRICE ELSE LINE.AMOUNT * (LINE.PRICE * (100 + LINE.VAT) /100)  END) "
+                                       + "\n      (CASE WHEN LINE.LINETYPE = 0OR LINE.LINETYPE = 4 THEN (CASE WHEN LINE.VATINC = 1 THEN LINE.AMOUNT * LINE.PRICE ELSE LINE.AMOUNT * (LINE.PRICE * (100 + LINE.VAT) /100)  END) "
                                        + "\n            WHEN LINE.LINETYPE = 2 THEN (CASE WHEN LINE.VATINC = 1 THEN TOTAL ELSE  (TOTAL * 1.18)  END) "
                                        + "\n            WHEN LINE.LINETYPE = 3 THEN (CASE WHEN LINE.VATINC = 1 THEN TOTAL ELSE  (TOTAL * 1.18)  END) "
                                        + "\n            ELSE 0 END)  AS Tutar, "
@@ -1176,7 +1223,7 @@ namespace IZOKALE_WEBSERVICE
                                        + "\n      FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE LINE WITH (NOLOCK) "
                                        + "\n      LEFT JOIN LG_" + IzoKaleFirmaNo + "_ITEMS ITEM WITH(NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0 "
                                        + "\n      LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL SETL WITH (NOLOCK) ON LINE.UOMREF = SETL.LOGICALREF "
-                                       + "\n      WHERE LINE.CANCELLED = 0 AND LINE.TRCODE = 1 AND LINE.LINETYPE IN(0, 2, 3) "
+                                       + "\n      WHERE LINE.CANCELLED = 0 AND LINE.TRCODE = 1 AND LINE.LINETYPE IN(0, 2, 3, 4) "
                                        + "\n      AND LINE.ORDFICHEREF = " + OrFicheRef + " ORDER BY LINE.LINENO_ ";
 
 
@@ -1233,7 +1280,7 @@ namespace IZOKALE_WEBSERVICE
                                 + "       ELSE 'Kısmi Sevk' END) AS SIPARISDURUMU, "
                                 + " SIPARIS.GENEXP1 +' '+ SIPARIS.GENEXP2 +' '+SIPARIS.GENEXP3 +' '+SIPARIS.GENEXP4 +' '+ SIPARIS.GENEXP5 +' '+SIPARIS.GENEXP6 AS aciklamalar, "
                                 + " (CASE SIPARIS.TRCURR WHEN 0 THEN 'TL' WHEN 20 THEN 'EUR' WHEN 1 THEN 'USD' ELSE '???' END) AS PARABIRIMI, "
-                                + "  ISNULL((SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE  WITH (NOLOCK) WHERE LINETYPE = 0 AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF),0) AS SiparisTutari, "
+                                + "  ISNULL((SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE  WITH (NOLOCK) WHERE (LINETYPE = 0 OR LINETYPE = 4) AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF),0) AS SiparisTutari, "
                                 + "  ISNULL((SELECT SUM((LINENET) * (100 + VAT) / 100)   FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STLINE  WITH (NOLOCK) WHERE  ORDFICHEREF = SIPARIS.LOGICALREF AND CANCELLED = 0 ),0) AS SevkedilenTutar "
 
                             + " FROM "
@@ -1293,10 +1340,10 @@ namespace IZOKALE_WEBSERVICE
 
 
                    " SELECT MusteriKodu, MusteriAdi, BaglantiLREF,  FiyatListesi,  "
-               + "\n	 (CASE WHEN((SabitKurUSD > 1) and(SabitKurEUR > 1)) THEN Aciklama +' [Sabit Kur: ' + SabitKurTarihi + ' USD:' + CAST(SabitKurUSD AS VARCHAR) + ' EUR:' + CAST(SabitKurEUR AS VARCHAR) + ']' "
-               + "\n        WHEN BaglantiTutari > 1 then Aciklama +' [Güncel Dövizli Bağlantı]' "
-               + "\n            ELSE '' "
-               + "\n    END) AS Aciklama, BaglantiTutari, SiparisTutari, Bakiye,SozlesmeIskontosu "
+               + "\n  (CASE WHEN BaglantiLREF = 0 THEN 'Liste'"
+               + "\n  WHEN BaglantiLREF != 0 AND BaglantiTutari > 1 THEN 'Bağlantı'"
+               + "\n  ELSE '' END) as Aciklama,"
+               + "\n     BaglantiTutari, SiparisTutari, Bakiye,SozlesmeIskontosu "
 
                + "\n     FROM "
                + "\n     ( "
@@ -1322,7 +1369,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi, "
                + "\n                  (select NAME from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=ISNULL(SOZLESME.PROJECTREF, -1)) AS FiyatListesi, "
                + "\n                  0 AS BaglantiTutari, "
-               + "\n                  (SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE LINETYPE = 0 AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF) AS SiparisTutari, "
+               + "\n                  (SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0 OR LINETYPE = 4) AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF) AS SiparisTutari, "
                + "\n                  ISNULL(SOZLESME.LOGICALREF, 0) AS BaglantiLREF, "
                + "\n                   ISNULL((SELECT TEXTFLDS1 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),'') AS Aciklama, "
                + "\n                   ISNULL((SELECT NUMFLDS2 FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_DEFNFLDSTRANV WHERE PARENTREF = SOZLESME.LOGICALREF AND MODULENR = 262 AND LEVEL_ = 0),0) AS SabitKurTarihi, "
@@ -1480,7 +1527,7 @@ namespace IZOKALE_WEBSERVICE
                 con.Open();
                 SqlCommand cmdHesapOzeti = new SqlCommand();
                 cmdHesapOzeti.Connection = con;
-                cmdHesapOzeti.CommandText = "select cart.* from LG_CSTVND musteri inner join [dbo].[LG_CVARPASG] iliski on musteri.LOGICALREF=iliski.CSTVNDREF inner join LG_" + IzoKaleFirmaNo + "_CLCARD cart on iliski.ARPREF=cart.LOGICALREF where musteri.CODE='" + BayiKodu + "'";
+                cmdHesapOzeti.CommandText = "select cart.* from LG_CSTVND musteri inner join [dbo].[LG_CVARPASG] iliski on musteri.LOGICALREF=iliski.CSTVNDREF inner join LG_" + IzoKaleFirmaNo + "_CLCARD cart on iliski.ARPREF=cart.LOGICALREF where musteri.CODE='" + BayiKodu + "' and iliski.FIRMNO=" + IzoKaleFirmaNo;
                 SqlDataReader rdHesapOzeti = cmdHesapOzeti.ExecuteReader();
                 DataTable dt = new DataTable();
                 dt.Load(rdHesapOzeti);
@@ -1649,6 +1696,59 @@ namespace IZOKALE_WEBSERVICE
                 con.Close();
             }
             return JsonConvert.SerializeObject(AmbarBilgileri, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
+        }
+
+
+        [WebMethod]
+        public string WCFSozlesmeBilgileri(string BayiKodu, int BaglantiLREF)
+        {
+            WCFSozlesmeBilgileri sozlesme = new WCFSozlesmeBilgileri();
+            if (BaglantiLREF == -1)
+            {
+                sozlesme.SozlesmeFisNo = "";
+            }
+            else
+            {
+
+                sozlesme.SozlesmeLREF = -1;
+                using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+                {
+                    con.Open();
+                    SqlCommand cmd = new SqlCommand();
+                    cmd.Connection = con;
+                    cmd.CommandText =
+
+
+                     "                  SELECT "
+                   + "\n                  SOZLESME.FICHENO AS SozlesmeFisNo, "
+                   + "\n                  ISNULL(MUSTERI.CODE, '-') AS MusteriKodu, "
+                   + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi,  "
+                   + "\n                  ISNULL(SOZLESME.DOCODE, ' - ') AS FiyatListesi, "
+                   + "\n                  ISNULL(SOZLESME.LOGICALREF, -1) AS BaglantiLREF "
+
+                   + "\n                  FROM "
+                   + "\n                    LG_" + IzoKaleFirmaNo + "_PURCHOFFER SOZLESME  "
+                   + "\n                     LEFT JOIN LG_" + IzoKaleFirmaNo + "_CLCARD CARI ON SOZLESME.CLIENTREF = CARI.LOGICALREF "
+                   + "\n                      LEFT JOIN LG_CVARPASG ILISKI ON ILISKI.ARPREF = CARI.LOGICALREF AND FIRMNO = " + IzoKaleFirmaNo + " "
+                   + "\n                       LEFT JOIN LG_CSTVND MUSTERI ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 "
+                   + "\n                  WHERE SOZLESME.TRCODE = 1 AND SOZLESME.TYP = 2 AND SOZLESME.CANCELLED = 0 AND MUSTERI.CODE = '" + BayiKodu + "' AND SOZLESME.LOGICALREF = " + BaglantiLREF;
+
+
+                    SqlDataReader rd = cmd.ExecuteReader();
+                    while (rd.Read())
+                    {
+
+                        sozlesme.SozlesmeAdi = rd["FiyatListesi"].ToString();
+                        sozlesme.SozlesmeFisNo = rd["SozlesmeFisNo"].ToString();
+                        sozlesme.SozlesmeLREF = Convert.ToInt32(rd["BaglantiLREF"].ToString());
+                    }
+
+                    con.Close();
+                }
+
+            }
+
+            return JsonConvert.SerializeObject(sozlesme, new IsoDateTimeConverter() { DateTimeFormat = "dd.MM.yyyy" });
         }
 
         public bool M2BMukerrerKayitKontrol(string MusteriSiparisNo)
@@ -2086,6 +2186,7 @@ namespace IZOKALE_WEBSERVICE
 
 
         }
+        #region object
         static UnityObjects.UnityApplication obj = new UnityObjects.UnityApplication();
         [WebMethod]
         public string test()
@@ -2442,7 +2543,8 @@ namespace IZOKALE_WEBSERVICE
                         transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
                         transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
                         transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
-
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
 
                     }
                 }
@@ -2617,6 +2719,6 @@ namespace IZOKALE_WEBSERVICE
 
             return retMesaj;
         }
-
+        #endregion
     }
 }

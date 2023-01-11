@@ -69,6 +69,7 @@ namespace IZOKALE_WEBSERVICE.Models
         public int KdvHaricmi0 { get; set; } //            VAT_INCLUDED
         public string SatirAciklamasi { get; set; }
         public string Birim { get; set; }
+        public double IndirimOrani { set; get; }
     }
 
 
@@ -107,6 +108,12 @@ namespace IZOKALE_WEBSERVICE.Models
         public string SatisElemaniAciklamasi;
     }
 
+    public class WCFSozlesmeBilgileri
+    {
+        public string SozlesmeFisNo;
+        public int SozlesmeLREF;
+        public string SozlesmeAdi;
+    }
 
 
     public class Musteriler
@@ -171,7 +178,7 @@ namespace IZOKALE_WEBSERVICE.Models
         public string siparisTutari;
         public string bakiye;
         public string baglantiLREF;
-        public string anaGruplar;
+        //public string anaGruplar;
         public double iskontoOrani;
     }
     public class SiparisFis
@@ -187,7 +194,7 @@ namespace IZOKALE_WEBSERVICE.Models
         public string fiyatListesi;
         public string siparisTutari;
         public string sevkedilenTutar;
-      
+
         //public string adresBilgisi;
         public string aciklamalar;
 
@@ -230,7 +237,7 @@ namespace IZOKALE_WEBSERVICE.Models
         public string aciklamalar;
         public string fiyatListesi;
         public string faturaNo;
-        
+
     }
 
     public class IrsaliyeSatir
