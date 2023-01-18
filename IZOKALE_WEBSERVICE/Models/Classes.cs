@@ -8,6 +8,15 @@ namespace IZOKALE_WEBSERVICE.Models
     public class Classes
     {
     }
+    public class SistemKalemleriBilgileri
+    {
+        public string Kodu { get; set; }
+        public string Adi { get; set; }
+        public double BirBirimeKullanilacakMiktar { get; set; }
+        public double paketMiktari { set; get; }
+
+
+    }
 
     public class CariSevkAdresi
     {
@@ -180,6 +189,27 @@ namespace IZOKALE_WEBSERVICE.Models
         public string baglantiLREF;
         //public string anaGruplar;
         public double iskontoOrani;
+    }
+
+    public class SozlesmeVeCarileri
+    {
+        public int baglantiLREF;
+        public int cariLREF;
+        public string CariKodu;
+        public string CariAdi;
+        public string SatisElemani;
+    }
+    public class TumBayilerBaglantiBakiyeOzeti : FiyatListesiBakiye
+    {
+        public string MusteriKodu;
+        public string MusteriAdi;
+        public double ListeIskontosu;
+        public double baglantiTutariDouble;
+        public double siparisTutariDouble;
+        public double bakiyeDouble;
+        public string kalanAdet;
+        public double kalanAdetDouble;
+
     }
     public class SiparisFis
     {
