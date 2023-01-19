@@ -1294,7 +1294,7 @@ namespace IZOKALE_WEBSERVICE
                                 + " SUBSTRING(CARI.DEFINITION_,1,15) AS cariAdi,  "
                                 + " IRSALIYE.DATE_ as irsaliyeTarihi, "
                                 + " ISNULL(IRSALIYE.FICHENO, ' - ') as irsaliyeNo, "
-
+                                + " (select top(1) CODE from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=IRSALIYE.PROJECTREF) as projeKodu, "
                                 + " ISNULL((SELECT TOP 1 DRIVERNAME1+' '+DRIVERSURNAME1+' / '+PLATENUM1+' - '+CHASSISNUM1 FROM  LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_EINVOICEDET WHERE STFREF = IRSALIYE.LOGICALREF ORDER BY LOGICALREF DESC    ),'') AS SOFOR,"
 
                                 + " IRSALIYE.DOCTRACKINGNR AS projeKodu, "
@@ -1324,7 +1324,7 @@ namespace IZOKALE_WEBSERVICE
 
 
                     irsaliye.aciklamalar = rdIrsaliyeFis["aciklamalar"].ToString();
-                    //irsaliye.fiyatListesi = rdIrsaliyeFis["baglantiKodu"].ToString();
+                    irsaliye.fiyatListesi = rdIrsaliyeFis["projeKodu"].ToString();
                     irsaliye.faturaNo = rdIrsaliyeFis["faturaNo"].ToString();
 
 
@@ -1505,7 +1505,9 @@ namespace IZOKALE_WEBSERVICE
                                 + " SIPARIS.DATE_ as siparisTarihi, "
                                 + " ISNULL(SIPARIS.FICHENO, ' - ') as siparisNo, "
                                 + " ISNULL(SIPARIS.CUSTORDNO, ' - ') as portalKodu, "
-                                + " SIPARIS.DOCTRACKINGNR AS projeKodu, "
+                                // + " SIPARIS.DOCTRACKINGNR AS projeKodu, "
+                                + " (select top(1) CODE from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=SIPARIS.PROJECTREF) as projeKodu, "
+
                                 //  + " ISNULL(SOZLESME.DOCODE, ' - ') AS baglantiKodu, "
 
                                 + " (CASE WHEN ( (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ((CLOSED = 1) OR (SHIPPEDAMOUNT>=AMOUNT)) AND ORDFICHEREF = SIPARIS.LOGICALREF ) = (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ORDFICHEREF = SIPARIS.LOGICALREF ) ) THEN 'Sevkedilmiş' "
@@ -1542,7 +1544,8 @@ namespace IZOKALE_WEBSERVICE
                     siparis.siparisNo = rdSiparisFis["siparisNo"].ToString();
                     siparis.portalKodu = rdSiparisFis["portalKodu"].ToString();
                     // siparis.projeKodu = rdSiparisFis["projeKodu"].ToString();
-                    // siparis.fiyatListesi = rdSiparisFis["baglantiKodu"].ToString();
+                    siparis.fiyatListesi = rdSiparisFis["projeKodu"].ToString();
+
                     //siparis.Statu = rdSiparisFis["Durum"].ToString();
                     siparis.aciklamalar = rdSiparisFis["aciklamalar"].ToString();
                     siparis.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdSiparisFis["SiparisTutari"].ToString())) + ' ' + rdSiparisFis["PARABIRIMI"].ToString();
