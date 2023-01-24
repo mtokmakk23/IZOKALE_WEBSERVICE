@@ -506,7 +506,7 @@ namespace IZOKALE_WEBSERVICE
                                   " select *," +
                                     " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
                                     " from(" +
-                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME3 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
                                     "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
                                     "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
                                     "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
@@ -661,7 +661,7 @@ namespace IZOKALE_WEBSERVICE
                                   " select *," +
                                     " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
                                     " from(" +
-                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME3 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
                                     "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
                                     "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
                                     "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
@@ -1753,7 +1753,7 @@ namespace IZOKALE_WEBSERVICE
                + "\n                  'Sipariş ' AS Tip, "
                + "\n                  ISNULL(MUSTERI.CODE, '-') AS MusteriKodu, "
                + "\n                  ISNULL(MUSTERI.TITLE, '!! MÜŞTERİYE BAĞLANMAMIŞ !!') AS MusteriAdi, "
-               + "\n                  (select NAME from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=ISNULL(SOZLESME.PROJECTREF, -1)) AS FiyatListesi, "
+               + "\n                  (select NAME from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=ISNULL(SIPARIS.PROJECTREF, -1)) AS FiyatListesi, "
                + "\n                  0 AS BaglantiTutari, "
                + "\n                  (SELECT SUM((CASE WHEN CLOSED = 1 THEN SHIPPEDAMOUNT ELSE AMOUNT END) * (LINENET / AMOUNT) * (100 + VAT) / 100) FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0 OR LINETYPE = 4) AND CANCELLED = 0 AND ORDFICHEREF = SIPARIS.LOGICALREF) AS SiparisTutari, "
                + "\n                  ISNULL(SOZLESME.LOGICALREF, 0) AS BaglantiLREF, "
