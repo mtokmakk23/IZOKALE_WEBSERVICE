@@ -264,7 +264,7 @@ namespace IZOKALE_WEBSERVICE
                         }
 
                     }
-                    var merkezVarMi = il.Ilceler.Where(x => x.IlKodu == il.LOGICALREF && x.IlceAdi == "MERKEZ").FirstOrDefault();
+                    var merkezVarMi = il.Ilceler.Where(x => x.IlKodu == il.LOGICALREF && x.IlceAdi.ToLower() == "merkez").FirstOrDefault();
                     if (merkezVarMi == null)
                     {
                         IlceBilgileri ilce = new IlceBilgileri();
@@ -313,7 +313,7 @@ namespace IZOKALE_WEBSERVICE
                 SqlCommand cmdMalzemeler = new SqlCommand();
                 cmdMalzemeler.Connection = con;
                 cmdMalzemeler.CommandText =
-                                  " select itemSRV.LOGICALREF, itemSRV.CODE as NakliyeKodu,itemSRV.DEFINITION_ as NakliyeAdi,birim.NAME as NakliyeBirimSeti, ISNULL(ISNULL(price.PRICE,0)*ISNULL((select TOP(1) CONVFACT2 from LG_121_UNITSETL where CODE='" + nakliyeParam2 + "' and UNITSETREF=itemSRV.UNITSETREF),0),0) as NakliyeBirimFiyatiTL" +
+                                  " select itemSRV.LOGICALREF, itemSRV.CODE as NakliyeKodu,itemSRV.DEFINITION_ as NakliyeAdi,birim.NAME as NakliyeBirimSeti, ISNULL(ISNULL(price.PRICE,0)*ISNULL((select TOP(1) CONVFACT2 from LG_" + IzoKaleFirmaNo + "_UNITSETL where CODE='" + nakliyeParam2 + "' and UNITSETREF=itemSRV.UNITSETREF),0),0) as NakliyeBirimFiyatiTL" +
 " from LG_" + IzoKaleFirmaNo + "_SRVCARD itemSRV left join LG_" + IzoKaleFirmaNo + "_PRCLIST price on itemSRV.LOGICALREF = price.CARDREF and price.ACTIVE = 0 left join" +
 " LG_" + IzoKaleFirmaNo + "_UNITSETL birim on price.UOMREF = birim.LOGICALREF";
 
@@ -1262,12 +1262,12 @@ namespace IZOKALE_WEBSERVICE
                 SqlCommand cmdIrsaliyeFis = new SqlCommand();
                 cmdIrsaliyeFis.Connection = con;
                 cmdIrsaliyeFis.CommandText = "SELECT MUSTERI.TITLE as CARIADI,ITEM.CODE as MALZEMEKODU, ITEM.NAME AS MALZEMEADI,SUM(LINE.AMOUNT) as MIKTAR, SETL.CODE AS BIRIM,ITEM.SPECODE FROM" +
-" LG_121_02_STFICHE FICHE LEFT JOIN" +
-" LG_CVARPASG ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = FICHE.CLIENTREF AND FIRMNO = 121 LEFT JOIN" +
+" LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STFICHE FICHE LEFT JOIN" +
+" LG_CVARPASG ILISKI WITH(NOLOCK)  ON ILISKI.ARPREF = FICHE.CLIENTREF AND FIRMNO = " + IzoKaleFirmaNo + " LEFT JOIN" +
 " LG_CSTVND MUSTERI WITH(NOLOCK)  ON ILISKI.CSTVNDREF = MUSTERI.LOGICALREF AND MUSTERI.CARDTYPE = 1 LEFT JOIN" +
-" LG_121_02_STLINE LINE WITH(NOLOCK) ON FICHE.LOGICALREF = LINE.STFICHEREF LEFT JOIN" +
-" LG_121_ITEMS ITEM WITH(NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0  LEFT JOIN" +
-" LG_121_UNITSETL SETL ON LINE.UOMREF = SETL.LOGICALREF" +
+" LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_STLINE LINE WITH(NOLOCK) ON FICHE.LOGICALREF = LINE.STFICHEREF LEFT JOIN" +
+" LG_" + IzoKaleFirmaNo + "_ITEMS ITEM WITH(NOLOCK) ON LINE.STOCKREF = ITEM.LOGICALREF AND LINE.LINETYPE = 0  LEFT JOIN" +
+" LG_" + IzoKaleFirmaNo + "_UNITSETL SETL ON LINE.UOMREF = SETL.LOGICALREF" +
 " WHERE LINE.CANCELLED = 0 AND LINE.TRCODE IN(7,8) AND LINE.LINETYPE = 0 AND MUSTERI.CODE = '" + BayiKodu + "' AND DOCDATE>= '" + BaslangicTarih + "' AND DOCDATE <= '" + BitisTarihi + "'" +
 " group by MUSTERI.CODE,MUSTERI.TITLE,ITEM.CODE,ITEM.NAME,SETL.CODE,ITEM.SPECODE order by SETL.CODE ASC";
                 SqlDataReader rdIrsaliyeFis = cmdIrsaliyeFis.ExecuteReader();
