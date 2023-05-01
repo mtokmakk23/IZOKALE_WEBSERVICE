@@ -380,10 +380,7 @@ namespace IZOKALE_WEBSERVICE
 
         public double BayiIskontosu(string BayiKodu, string SPECODE1)
         {
-            if (SPECODE1 != "KB_BİMS" && SPECODE1 != "KB_YKİM" && SPECODE1 != "KB_POMZA")
-            {
-                return 0;
-            }
+
             try
             {
                 using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
@@ -404,7 +401,7 @@ namespace IZOKALE_WEBSERVICE
                 return 0;
             }
 
-            
+
         }
         [WebMethod]
         public List<SistemKalemleriBilgileri> SistemKalemleriBilgileriAl(string anaGrup)
@@ -528,7 +525,10 @@ namespace IZOKALE_WEBSERVICE
                     {
                         indirimOrani = BayiIskontosu(BayiKodu, rdMalzemeler["SPECODE"].ToString());
                     }
-
+                    if (rdMalzemeler["SPECODE"].ToString() != "KB_BİMS" && rdMalzemeler["SPECODE"].ToString() != "KB_YKİM" && rdMalzemeler["SPECODE"].ToString() != "KB_POMZA")
+                    {
+                        indirimOrani = 0;
+                    }
                     Malzeme malzeme = new Malzeme();
                     malzeme.Success = true;
                     malzeme.HataMesaji = "";
@@ -635,6 +635,10 @@ namespace IZOKALE_WEBSERVICE
             else
             {
                 indirimOrani = BayiIskontosu(BayiKodu, SPECODE1);
+            }
+            if (SPECODE1 != "KB_BİMS" && SPECODE1 != "KB_YKİM" && SPECODE1 != "KB_POMZA")
+            {
+                indirimOrani = 0;
             }
             string IlText = "";
             string IlceText = "";
@@ -782,7 +786,7 @@ namespace IZOKALE_WEBSERVICE
                 SqlCommand cmdMalzemeler = new SqlCommand();
                 DataTable dt = new DataTable();
                 cmdMalzemeler.Connection = con;
-                cmdMalzemeler.CommandText = "select * from "+tabloAdi;
+                cmdMalzemeler.CommandText = "select * from " + tabloAdi;
                 var dr = cmdMalzemeler.ExecuteReader();
                 dt.Load(dr);
                 dr.Close();
@@ -2891,18 +2895,18 @@ namespace IZOKALE_WEBSERVICE
                 item.DataFields.FieldByName("DEPARTMENT").Value = Baslik.Isyeri;
                 item.DataFields.FieldByName("FACTORY").Value = Baslik.Fabrika;
                 item.DataFields.FieldByName("SOURCE_WH").Value = Baslik.Ambar;
-                if (AcceptEInv == "1")
-                {
-                    item.DataFields.FieldByName("EINVOICE").Value = "1";
-                    item.DataFields.FieldByName("EINVOICE_PROFILEID").Value = ProfileId;
+                //if (AcceptEInv == "1")
+                //{
+                //    item.DataFields.FieldByName("EINVOICE").Value = "1";
+                //    item.DataFields.FieldByName("EINVOICE_PROFILEID").Value = ProfileId;
 
-                }
-                else
-                {
-                    item.DataFields.FieldByName("EINVOICE").Value = "2";
-                    item.DataFields.FieldByName("EARCHIVEDETR_SENDMOD").Value = "2";
-                    item.DataFields.FieldByName("EARCHIVEDETR_INTPAYMENTTYPE").Value = "4";
-                }
+                //}
+                //else
+                //{
+                //    item.DataFields.FieldByName("EINVOICE").Value = "2";
+                //    item.DataFields.FieldByName("EARCHIVEDETR_SENDMOD").Value = "2";
+                //    item.DataFields.FieldByName("EARCHIVEDETR_INTPAYMENTTYPE").Value = "4";
+                //}
                 DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>  "
                           + "\n         <SALES_ORDERS> "
                           + "\n           <ORDER_SLIP DBOP=\"INS\">"
@@ -2935,16 +2939,16 @@ namespace IZOKALE_WEBSERVICE
 
 
 
-                if (AcceptEInv == "1")
-                {
-                    DataXml = DataXml
-                          + "\n             <EINVOICE>1</EINVOICE> <EINVOICE_PROFILEID>" + ProfileId + "</EINVOICE_PROFILEID>";
-                }
-                else
-                {
-                    DataXml = DataXml
-                        + "\n             <EINVOICE>2</EINVOICE> ";
-                }
+                //if (AcceptEInv == "1")
+                //{
+                //    DataXml = DataXml
+                //          + "\n             <EINVOICE>1</EINVOICE> <EINVOICE_PROFILEID>" + ProfileId + "</EINVOICE_PROFILEID>";
+                //}
+                //else
+                //{
+                //    DataXml = DataXml
+                //        + "\n             <EINVOICE>2</EINVOICE> ";
+                //}
 
 
 
