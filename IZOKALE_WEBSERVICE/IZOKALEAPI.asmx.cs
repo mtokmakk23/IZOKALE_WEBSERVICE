@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Services;
@@ -2594,6 +2595,26 @@ namespace IZOKALE_WEBSERVICE
 
 
         }
+   
+        public void dosyayaYaz( string xml)
+        {
+            
+            string dosya_yolu =HttpContext.Current.Server.MapPath("~")+"/order_xml_log.xml";
+            //İşlem yapacağımız dosyanın yolunu belirtiyoruz.
+            FileStream fs = new FileStream(dosya_yolu, FileMode.OpenOrCreate, FileAccess.Write);
+            //Bir file stream nesnesi oluşturuyoruz. 1.parametre dosya yolunu,
+            //2.parametre dosya varsa açılacağını yoksa oluşturulacağını belirtir,
+            //3.parametre dosyaya erişimin veri yazmak için olacağını gösterir.
+            StreamWriter sw = new StreamWriter(fs);
+            //Yazma işlemi için bir StreamWriter nesnesi oluşturduk.
+            sw.WriteLine(xml);  
+            //Dosyaya ekleyeceğimiz iki satırlık yazıyı WriteLine() metodu ile yazacağız.
+            sw.Flush();
+            //Veriyi tampon bölgeden dosyaya aktardık.
+            sw.Close();
+            fs.Close();
+            //İşimiz bitince kullandığımız nesneleri iade ettik.
+        }
         #region object
         static UnityObjects.UnityApplication obj = new UnityObjects.UnityApplication();
         [WebMethod]
@@ -3075,6 +3096,7 @@ namespace IZOKALE_WEBSERVICE
                 }
                 else
                 {
+                    dosyayaYaz(DataXml);
                     //retMesaj += DataXml;
                     if (item.ErrorCode != 0)
                     {
