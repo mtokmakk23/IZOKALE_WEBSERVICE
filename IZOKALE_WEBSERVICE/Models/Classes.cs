@@ -35,6 +35,7 @@ namespace IZOKALE_WEBSERVICE.Models
         public string BelgeNo { get; set; }
         public string OzelKod { get; set; }
         public string YetkiKodu { get; set; }
+        public string AdresBasligi { get; set; }
 
         //<SHIPLOC_CODE>02</SHIPLOC_CODE> sevkiyat adresinin kodu
         public string Aciklama1 { get; set; }
@@ -225,7 +226,7 @@ namespace IZOKALE_WEBSERVICE.Models
         public string siparisTutari;
         public string sevkedilenTutar;
 
-        //public string adresBilgisi;
+        public string adresBasligi;
         public string aciklamalar;
 
 

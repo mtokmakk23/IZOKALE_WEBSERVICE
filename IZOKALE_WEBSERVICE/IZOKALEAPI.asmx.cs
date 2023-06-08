@@ -504,12 +504,13 @@ namespace IZOKALE_WEBSERVICE
                                   " select *," +
                                     " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
                                     " from(" +
-                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                    "    select UNITB.CODE AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
                                     "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
                                     "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
                                     "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
                                    "    from LG_" + IzoKaleFirmaNo + "_ITEMS ITEM" +
                                     " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETF UNITA  WITH (NOLOCK) ON UNITA.LOGICALREF = ITEM.UNITSETREF " +
+                                    " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL UNITB  WITH (NOLOCK) ON UNITA.LOGICALREF = UNITB.UNITSETREF AND UNITB.MAINUNIT=1 " +
                                     " WHERE(ITEM.ACTIVE = 0)   AND ITEM.CODE IN(" + MalzemeKodlari + ") AND ITEM.SPECODE5='FLOW'" +
                                     ")  aaa";
 
@@ -526,7 +527,7 @@ namespace IZOKALE_WEBSERVICE
                     {
                         indirimOrani = BayiIskontosu(BayiKodu, rdMalzemeler["SPECODE"].ToString());
                     }
-                    if (rdMalzemeler["SPECODE"].ToString() != "KB_BİMS" && rdMalzemeler["SPECODE"].ToString() != "KB_YKİM" && rdMalzemeler["SPECODE"].ToString() != "KB_POMZA")
+                    if (rdMalzemeler["SPECODE"].ToString() != "KB_BİMS" && rdMalzemeler["SPECODE"].ToString() != "KB_YKİM")
                     {
                         indirimOrani = 0;
                     }
@@ -637,7 +638,7 @@ namespace IZOKALE_WEBSERVICE
             {
                 indirimOrani = BayiIskontosu(BayiKodu, SPECODE1);
             }
-            if (SPECODE1 != "KB_BİMS" && SPECODE1 != "KB_YKİM" && SPECODE1 != "KB_POMZA")
+            if (SPECODE1 != "KB_BİMS" && SPECODE1 != "KB_YKİM")
             {
                 indirimOrani = 0;
             }
@@ -666,12 +667,13 @@ namespace IZOKALE_WEBSERVICE
                                   " select *," +
                                     " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
                                     " from(" +
-                                    "    select UNITA.NAME AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                    "    select UNITB.CODE AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
                                     "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
                                     "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
                                     "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
                                    "    from LG_" + IzoKaleFirmaNo + "_ITEMS ITEM" +
                                     " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETF UNITA  WITH (NOLOCK) ON UNITA.LOGICALREF = ITEM.UNITSETREF " +
+                                    " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL UNITB  WITH (NOLOCK) ON UNITA.LOGICALREF = UNITB.UNITSETREF AND UNITB.MAINUNIT=1 " +
                                     " WHERE(ITEM.ACTIVE = 0)   AND(ITEM.SPECODE = '" + SPECODE1 + "') AND ITEM.SPECODE5='FLOW'" +
                                     ")  aaa";
 
@@ -1530,7 +1532,7 @@ namespace IZOKALE_WEBSERVICE
                                 + " ISNULL(SIPARIS.CUSTORDNO, ' - ') as portalKodu, "
                                 // + " SIPARIS.DOCTRACKINGNR AS projeKodu, "
                                 + " (select top(1) CODE from LG_" + IzoKaleFirmaNo + "_PROJECT where LOGICALREF=SIPARIS.PROJECTREF) as projeKodu, "
-
+                                + "(select top(1) cast(cast(LDATA As varbinary(MAX)) as varchar(MAX)) from LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_PERDOC where INFOREF=SIPARIS.LOGICALREF and INFOTYP=5 and SIPARIS.DATE_>'2023-06-08') as adresBasligi,"
                                 //  + " ISNULL(SOZLESME.DOCODE, ' - ') AS baglantiKodu, "
 
                                 + " (CASE WHEN ( (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ((CLOSED = 1) OR (SHIPPEDAMOUNT>=AMOUNT)) AND ORDFICHEREF = SIPARIS.LOGICALREF ) = (SELECT COUNT(*)  FROM LG_" + IzoKaleFirmaNo + "_" + IzoKaleDonemNo + "_ORFLINE WHERE (LINETYPE = 0) AND (CANCELLED = 0) AND ORDFICHEREF = SIPARIS.LOGICALREF ) ) THEN 'Sevkedilmiş' "
@@ -1565,12 +1567,13 @@ namespace IZOKALE_WEBSERVICE
                     siparis.siparisDurumu = rdSiparisFis["SIPARISDURUMU"].ToString();
                     siparis.siparisTarihi = DateTime.Parse(rdSiparisFis["siparisTarihi"].ToString());
                     siparis.siparisNo = rdSiparisFis["siparisNo"].ToString();
+                    siparis.adresBasligi = rdSiparisFis["adresBasligi"].ToString().Trim();
                     siparis.portalKodu = rdSiparisFis["portalKodu"].ToString();
                     // siparis.projeKodu = rdSiparisFis["projeKodu"].ToString();
                     siparis.fiyatListesi = rdSiparisFis["projeKodu"].ToString();
 
                     //siparis.Statu = rdSiparisFis["Durum"].ToString();
-                    siparis.aciklamalar = rdSiparisFis["aciklamalar"].ToString();
+                    siparis.aciklamalar = rdSiparisFis["aciklamalar"].ToString().Trim();
                     siparis.siparisTutari = String.Format("{0:N}", Convert.ToDouble(rdSiparisFis["SiparisTutari"].ToString())) + ' ' + rdSiparisFis["PARABIRIMI"].ToString();
                     siparis.sevkedilenTutar = String.Format("{0:N}", Convert.ToDouble(rdSiparisFis["SevkedilenTutar"].ToString())) + ' ' + rdSiparisFis["PARABIRIMI"].ToString();
                     // siparis.PlanVarmi = Int16.Parse(rdSiparisFis["PlanVarmi"].ToString());
@@ -2595,11 +2598,11 @@ namespace IZOKALE_WEBSERVICE
 
 
         }
-   
-        public void dosyayaYaz( string xml)
+
+        public void dosyayaYaz(string xml)
         {
-            
-            string dosya_yolu =HttpContext.Current.Server.MapPath("~")+"/order_xml_log.xml";
+
+            string dosya_yolu = HttpContext.Current.Server.MapPath("~") + "/order_xml_log.xml";
             //İşlem yapacağımız dosyanın yolunu belirtiyoruz.
             FileStream fs = new FileStream(dosya_yolu, FileMode.OpenOrCreate, FileAccess.Write);
             //Bir file stream nesnesi oluşturuyoruz. 1.parametre dosya yolunu,
@@ -2607,7 +2610,7 @@ namespace IZOKALE_WEBSERVICE
             //3.parametre dosyaya erişimin veri yazmak için olacağını gösterir.
             StreamWriter sw = new StreamWriter(fs);
             //Yazma işlemi için bir StreamWriter nesnesi oluşturduk.
-            sw.WriteLine(xml);  
+            sw.WriteLine(xml);
             //Dosyaya ekleyeceğimiz iki satırlık yazıyı WriteLine() metodu ile yazacağız.
             sw.Flush();
             //Veriyi tampon bölgeden dosyaya aktardık.
@@ -2902,7 +2905,7 @@ namespace IZOKALE_WEBSERVICE
                 item.DataFields.FieldByName("NOTES2").Value = Baslik.Aciklama2;
                 item.DataFields.FieldByName("NOTES3").Value = Baslik.Aciklama3;
                 item.DataFields.FieldByName("NOTES4").Value = Baslik.Aciklama4;
-                item.DataFields.FieldByName("ITEXT").Value = Baslik.Aciklama1 + ' ' + Baslik.Aciklama2 + ' ' + Baslik.Aciklama3 + ' ' + Baslik.Aciklama4;
+                item.DataFields.FieldByName("ITEXT").Value = Baslik.AdresBasligi;
                 item.DataFields.FieldByName("ORDER_STATUS").Value = "1";
                 item.DataFields.FieldByName("AUXIL_CODE").Value = Baslik.OzelKod;
                 item.DataFields.FieldByName("PAYMENT_CODE").Value = Baslik.OdemeTipiKodu;
@@ -2943,7 +2946,7 @@ namespace IZOKALE_WEBSERVICE
                           + "\n             <NOTES2>" + Baslik.Aciklama2 + "</NOTES2> "
                           + "\n             <NOTES3>" + Baslik.Aciklama3 + "</NOTES3> "
                           + "\n             <NOTES4>" + Baslik.Aciklama4 + "</NOTES4> "
-                          + "\n             <ITEXT>" + Baslik.Aciklama1 + ' ' + Baslik.Aciklama2 + ' ' + Baslik.Aciklama3 + ' ' + Baslik.Aciklama4 + "</ITEXT> "
+                          + "\n             <ITEXT>" + Baslik.AdresBasligi + "</ITEXT> "
                           + "\n             <ORDER_STATUS>1</ORDER_STATUS> "
                           + "\n              <AUXIL_CODE>" + Baslik.OzelKod + "</AUXIL_CODE>"
                           + "\n              <PAYMENT_CODE>" + Baslik.OdemeTipiKodu + "</PAYMENT_CODE> "
