@@ -315,7 +315,7 @@ namespace IZOKALE_WEBSERVICE
                 cmdMalzemeler.Connection = con;
                 cmdMalzemeler.CommandText =
                                   " select itemSRV.LOGICALREF, itemSRV.CODE as NakliyeKodu,itemSRV.DEFINITION_ as NakliyeAdi,birim.NAME as NakliyeBirimSeti, ISNULL(ISNULL(price.PRICE,0)*ISNULL((select TOP(1) CONVFACT2 from LG_" + IzoKaleFirmaNo + "_UNITSETL where CODE='" + nakliyeParam2 + "' and UNITSETREF=itemSRV.UNITSETREF),0),0) as NakliyeBirimFiyatiTL" +
-" from LG_" + IzoKaleFirmaNo + "_SRVCARD itemSRV left join LG_" + IzoKaleFirmaNo + "_PRCLIST price on itemSRV.LOGICALREF = price.CARDREF and price.ACTIVE = 0 left join" +
+" from LG_" + IzoKaleFirmaNo + "_SRVCARD itemSRV left join LG_" + IzoKaleFirmaNo + "_PRCLIST price on itemSRV.LOGICALREF = price.CARDREF and price.ACTIVE = 0 and price.PTYPE=4 left join" +
 " LG_" + IzoKaleFirmaNo + "_UNITSETL birim on price.UOMREF = birim.LOGICALREF";
 
                 if (nakliyeParam1 == "NB")
