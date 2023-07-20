@@ -284,7 +284,29 @@ namespace IZOKALE_WEBSERVICE
 
         }
 
-        public NakliyeBilgileri NakliyeFiyati(string IlKodu, string IlAdi, string IlceAdi, bool fabrikaTeslimMi, string nakliyeParam1, string nakliyeParam2)
+        public bool FiyatListesineBagliNakliyeListesiVarMi(string fiyatListesiKodu)
+        {
+            using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+            {
+                con.Open();
+                SqlCommand cmdMalzemeler = new SqlCommand();
+                cmdMalzemeler.Connection = con;
+                DataTable dt = new DataTable();
+                cmdMalzemeler.CommandText = $@"
+                    select * from LG_{IzoKaleFirmaNo}_PRCLIST price inner join 
+                    LG_{IzoKaleFirmaNo}_PROJECT proje on price.PROJECTREF=proje.LOGICALREF
+                    where price.PTYPE=4 and proje.CODE='{fiyatListesiKodu}'
+                    ";
+
+                SqlDataReader rdNakliyeler = cmdMalzemeler.ExecuteReader();
+                dt.Load(rdNakliyeler);
+                con.Close();
+
+                return dt.Rows.Count > 0;
+            }
+        }
+
+        public NakliyeBilgileri NakliyeFiyati(string IlKodu, string IlAdi, string IlceAdi, bool fabrikaTeslimMi, string nakliyeParam1, string nakliyeParam2, string fiyatListesi)
         {
             NakliyeBilgileri NakliyeBilgileri = new NakliyeBilgileri();
             if (fabrikaTeslimMi)
@@ -310,13 +332,23 @@ namespace IZOKALE_WEBSERVICE
 
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
             {
+
                 con.Open();
                 SqlCommand cmdMalzemeler = new SqlCommand();
                 cmdMalzemeler.Connection = con;
-                cmdMalzemeler.CommandText =
-                                  " select itemSRV.LOGICALREF, itemSRV.CODE as NakliyeKodu,itemSRV.DEFINITION_ as NakliyeAdi,birim.NAME as NakliyeBirimSeti, ISNULL(ISNULL(price.PRICE,0)*ISNULL((select TOP(1) CONVFACT2 from LG_" + IzoKaleFirmaNo + "_UNITSETL where CODE='" + nakliyeParam2 + "' and UNITSETREF=itemSRV.UNITSETREF),0),0) as NakliyeBirimFiyatiTL" +
-" from LG_" + IzoKaleFirmaNo + "_SRVCARD itemSRV left join LG_" + IzoKaleFirmaNo + "_PRCLIST price on itemSRV.LOGICALREF = price.CARDREF and price.ACTIVE = 0 and price.PTYPE=4 left join" +
-" LG_" + IzoKaleFirmaNo + "_UNITSETL birim on price.UOMREF = birim.LOGICALREF";
+                DataTable dt = new DataTable();
+                cmdMalzemeler.CommandText = $@" select 
+                                                 itemSRV.LOGICALREF, 
+                                                 itemSRV.CODE as NakliyeKodu,
+                                                 itemSRV.DEFINITION_ as NakliyeAdi,
+                                                 birim.NAME as NakliyeBirimSeti, 
+                                                 ISNULL(ISNULL(price.PRICE,0)*ISNULL((select TOP(1) CONVFACT2 from LG_{IzoKaleFirmaNo}_UNITSETL where CODE='{nakliyeParam2}' and UNITSETREF=itemSRV.UNITSETREF),0),0) as NakliyeBirimFiyatiTL,
+                                                 ISNULL(proje.CODE,'') as FiyatListesi
+                                                 from LG_{IzoKaleFirmaNo}_SRVCARD itemSRV left join 
+                                                 LG_{IzoKaleFirmaNo}_PRCLIST price on itemSRV.LOGICALREF = price.CARDREF and price.ACTIVE = 0 and price.PTYPE=4 left join 
+                                                 LG_{IzoKaleFirmaNo}_PROJECT proje on proje.LOGICALREF=price.PROJECTREF left join
+                                                 LG_{IzoKaleFirmaNo}_UNITSETL birim on price.UOMREF = birim.LOGICALREF where ISNULL(proje.CODE,'')='{fiyatListesi}'";
+
 
                 if (nakliyeParam1 == "NB")
                 {
@@ -325,12 +357,12 @@ namespace IZOKALE_WEBSERVICE
                     {
                         IlceAdi = IlAdi.ToUpper();
                     }
-                    cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,5)= '" + nakliyeParam1 + IlKodu + "'  and itemSRV.DEFINITION_ like '%" + IlceAdi.ToUpper() + "%'";
+                    cmdMalzemeler.CommandText += " and SUBSTRING(itemSRV.CODE,0,5)= '" + nakliyeParam1 + IlKodu + "'  and itemSRV.DEFINITION_ like '%" + IlceAdi.ToUpper() + "%'";
 
                 }
                 else if (nakliyeParam1 == "NE")
                 {
-                    cmdMalzemeler.CommandText += " where SUBSTRING(itemSRV.CODE,0,3)='" + nakliyeParam1 + "' and itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
+                    cmdMalzemeler.CommandText += " and SUBSTRING(itemSRV.CODE,0,3)='" + nakliyeParam1 + "' and itemSRV.DEFINITION_ like '%" + IlAdi.ToUpper() + "%'";
 
                 }
                 else
@@ -340,15 +372,17 @@ namespace IZOKALE_WEBSERVICE
                     NakliyeBilgileri.NakliyeHatasi = "Nakliye Fiyatı Bulunamadı.";
                     return NakliyeBilgileri;
                 }
-
-                DataTable dt = new DataTable();
                 SqlDataReader rdNakliyeler = cmdMalzemeler.ExecuteReader();
                 dt.Load(rdNakliyeler);
+
+
+
+
                 if (dt.Rows.Count > 1)
                 {
                     NakliyeBilgileri.Statu = false;
                     NakliyeBilgileri.NakliyeFiyatSayisi = dt.Rows.Count;
-                    NakliyeBilgileri.NakliyeHatasi = dt.Rows.Count + " adet nakliye fiyatı girilmemiş. ";
+                    NakliyeBilgileri.NakliyeHatasi = dt.Rows.Count + " adet nakliye fiyatı girilmiş. ";
                 }
                 else if (dt.Rows.Count == 0)
                 {
@@ -477,7 +511,7 @@ namespace IZOKALE_WEBSERVICE
         public List<Malzeme> SistemKalemleriMalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR, string MalzemeKodlari)
         {
             double indirimOrani = 0;
-
+            bool fiyatListesineBagliNakliyeListesiVarMi = FiyatListesineBagliNakliyeListesiVarMi(FiyatListesiKodu);
             string IlText = "";
             string IlceText = "";
             var IlveIlceleri = JsonConvert.DeserializeObject<List<IlBilgileri>>(IlveIlceleriGetir());
@@ -534,7 +568,7 @@ namespace IZOKALE_WEBSERVICE
                     Malzeme malzeme = new Malzeme();
                     malzeme.Success = true;
                     malzeme.HataMesaji = "";
-                    var nakliyeBilgileri = NakliyeFiyati(Il, IlText, IlceText, fabrikaTeslimMi, rdMalzemeler["KEYWORD1"].ToString(), rdMalzemeler["KEYWORD2"].ToString());
+                    var nakliyeBilgileri = NakliyeFiyati(Il, IlText, IlceText, fabrikaTeslimMi, rdMalzemeler["KEYWORD1"].ToString(), rdMalzemeler["KEYWORD2"].ToString(), fiyatListesineBagliNakliyeListesiVarMi ? FiyatListesiKodu : "");
 
                     if (nakliyeBilgileri.Statu == false)
                     {
@@ -630,6 +664,8 @@ namespace IZOKALE_WEBSERVICE
         public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
         {
             double indirimOrani = 0;
+            bool fiyatListesineBagliNakliyeListesiVarMi = FiyatListesineBagliNakliyeListesiVarMi(FiyatListesiKodu);
+
             if (baglantiLREF != "-1")
             {
                 indirimOrani = SecilebilirFiyatListeleri(BayiKodu).Where(x => x.baglantiLREF == baglantiLREF).FirstOrDefault().iskontoOrani;
@@ -689,7 +725,7 @@ namespace IZOKALE_WEBSERVICE
                     Malzeme malzeme = new Malzeme();
                     malzeme.Success = true;
                     malzeme.HataMesaji = "";
-                    var nakliyeBilgileri = NakliyeFiyati(Il, IlText, IlceText, fabrikaTeslimMi, rdMalzemeler["KEYWORD1"].ToString(), rdMalzemeler["KEYWORD2"].ToString());
+                    var nakliyeBilgileri = NakliyeFiyati(Il, IlText, IlceText, fabrikaTeslimMi, rdMalzemeler["KEYWORD1"].ToString(), rdMalzemeler["KEYWORD2"].ToString(), fiyatListesineBagliNakliyeListesiVarMi ? FiyatListesiKodu : "");
 
                     if (nakliyeBilgileri.Statu == false)
                     {
@@ -1032,7 +1068,7 @@ namespace IZOKALE_WEBSERVICE
                 con.Open();
                 SqlCommand cmdHesapEkstresi = new SqlCommand();
                 cmdHesapEkstresi.Connection = con;
-                
+
                 cmdHesapEkstresi.CommandText =
                                                      "	   				select  ROW_NUMBER() OVER(ORDER BY VergiNo, Tarih Asc) AS SNo,  * from(										" +
                "	                         SELECT 														" +
@@ -2601,24 +2637,18 @@ namespace IZOKALE_WEBSERVICE
 
         public void dosyayaYaz(string xml)
         {
-
             string dosya_yolu = HttpContext.Current.Server.MapPath("~") + "/order_xml_log.xml";
-            //İşlem yapacağımız dosyanın yolunu belirtiyoruz.
             FileStream fs = new FileStream(dosya_yolu, FileMode.OpenOrCreate, FileAccess.Write);
-            //Bir file stream nesnesi oluşturuyoruz. 1.parametre dosya yolunu,
-            //2.parametre dosya varsa açılacağını yoksa oluşturulacağını belirtir,
-            //3.parametre dosyaya erişimin veri yazmak için olacağını gösterir.
             StreamWriter sw = new StreamWriter(fs);
-            //Yazma işlemi için bir StreamWriter nesnesi oluşturduk.
             sw.WriteLine(xml);
-            //Dosyaya ekleyeceğimiz iki satırlık yazıyı WriteLine() metodu ile yazacağız.
             sw.Flush();
-            //Veriyi tampon bölgeden dosyaya aktardık.
             sw.Close();
             fs.Close();
-            //İşimiz bitince kullandığımız nesneleri iade ettik.
         }
-        #region object
+
+
+        #region
+
         static UnityObjects.UnityApplication obj = new UnityObjects.UnityApplication();
         [WebMethod]
         public string test()
@@ -2746,7 +2776,7 @@ namespace IZOKALE_WEBSERVICE
                             }
                             obj.Disconnect();
                             //***********************************
-                            #region
+        #region
                             //WCFService.SvcClient LoClient = new WCFService.SvcClient();
                             //LoClient.Open();
                             //int DataType = 34;
@@ -2800,7 +2830,7 @@ namespace IZOKALE_WEBSERVICE
                             //{
                             //    resultCariSevkKodu = "OK " + sevkkodu;
                             //}
-                            #endregion
+        #endregion
                         }
                         sqlcon.Close();
                         sqlcon.Dispose();
@@ -3120,7 +3150,7 @@ namespace IZOKALE_WEBSERVICE
                     }
                 }
                 obj.Disconnect();
-                #region
+        #region
                 //WCFService.SvcClient LoClient = new WCFService.SvcClient();
                 //LoClient.Open();
                 //DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>  "
@@ -3252,7 +3282,7 @@ namespace IZOKALE_WEBSERVICE
                 //{
                 //    retMesaj = "OK " + DataRef.ToString();
                 //}
-                #endregion
+        #endregion
             }
             catch (Exception ex)
             {
@@ -3270,6 +3300,6 @@ namespace IZOKALE_WEBSERVICE
 
             return retMesaj;
         }
-        #endregion
+        #region
     }
 }
