@@ -190,6 +190,8 @@ namespace IZOKALE_WEBSERVICE.Models
         public string baglantiLREF;
         //public string anaGruplar;
         public double iskontoOrani;
+        public double sozlesmeUSD;
+        public double sozlesmeEUR;
     }
 
     public class SozlesmeVeCarileri
