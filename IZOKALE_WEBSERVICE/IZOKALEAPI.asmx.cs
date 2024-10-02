@@ -40,8 +40,7 @@ namespace IZOKALE_WEBSERVICE
 
         string IzoKaleFirmaNo = "";
         string IzoKaleDonemNo = "";
-        public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
-        public string SecurityCode = "21ca0918-82be-4eca-9e90-92ea58b11c64";
+        public string IzoKaleConnectionString = "data source = 192.168.1.57; MultipleActiveResultSets=True; initial catalog = TIGERDB; User Id = sa; Password=Marka.2023";
         public string LbsLoadSecurityCode = "";
 
 
@@ -231,12 +230,12 @@ namespace IZOKALE_WEBSERVICE
                 con.Open();
                 SqlCommand cmdIller = new SqlCommand();
                 cmdIller.Connection = con;
-                cmdIller.CommandText = "select * from L_CITY where COUNTRY=176";
+                cmdIller.CommandText = "select * from L_CITY where COUNTRY in (select top 1 LOGICALREF from L_COUNTRY where CODE='TR')";
                 SqlDataReader rdIller = cmdIller.ExecuteReader();
 
                 SqlCommand cmdIlceler = new SqlCommand();
                 cmdIlceler.Connection = con;
-                cmdIlceler.CommandText = "select * from L_TOWN where CNTRNR=176";
+                cmdIlceler.CommandText = "select * from L_TOWN where CNTRNR in (select top 1 LOGICALREF from L_COUNTRY where CODE='TR')";
                 SqlDataReader rdIlceler = cmdIlceler.ExecuteReader();
                 var dtIller = new DataTable();
                 var dtIlceler = new DataTable();
@@ -543,9 +542,26 @@ namespace IZOKALE_WEBSERVICE
             return markalar != "" ? markalar.Substring(0, markalar.Length - 1) : "";
         }
 
+        
+
         [WebMethod]
-        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR)
+        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR,string PAYPLANREF)
         {
+            string IlText = "";
+            string IlceText = "";
+            var IlveIlceleri = JsonConvert.DeserializeObject<List<IlBilgileri>>(IlveIlceleriGetir());
+            foreach (var item in IlveIlceleri.Where(x => x.LOGICALREF.ToString() == Il))
+            {
+                IlText = item.IlAdi;
+                Il = item.IlKodu;
+                foreach (var item2 in item.Ilceler.Where(x => x.LOGICALREF.ToString() == Ilce))
+                {
+                    Ilce = item2.IlceAdi;
+                    IlceText = item2.IlceAdi;
+                }
+            }
+         
+
             string fasonBayisiMarkalari = FasonBayisiMarkalari(BayiKodu);
             double indirimOrani = 0;
             double sozlesmeEUR = 0;
@@ -567,19 +583,7 @@ namespace IZOKALE_WEBSERVICE
             {
                 indirimOrani = 0;
             }
-            string IlText = "";
-            string IlceText = "";
-            var IlveIlceleri = JsonConvert.DeserializeObject<List<IlBilgileri>>(IlveIlceleriGetir());
-            foreach (var item in IlveIlceleri.Where(x => x.LOGICALREF.ToString() == Il))
-            {
-                IlText = item.IlAdi;
-                Il = item.IlKodu;
-                foreach (var item2 in item.Ilceler.Where(x => x.LOGICALREF.ToString() == Ilce))
-                {
-                    Ilce = item2.IlceAdi;
-                    IlceText = item2.IlceAdi;
-                }
-            }
+           
 
 
             List<Malzeme> Malzemeler = new List<Malzeme>();
@@ -589,19 +593,32 @@ namespace IZOKALE_WEBSERVICE
                 SqlCommand cmdMalzemeler = new SqlCommand();
                 cmdMalzemeler.Connection = con;
                 cmdMalzemeler.CommandText =
-                                  " select *," +
-                                    " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
-                                    " from(" +
-                                    "    select UNITB.CODE AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
-                                    "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
-                                    "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
-                                    "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
-                                   "    from LG_" + IzoKaleFirmaNo + "_ITEMS ITEM" +
-                                    " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETF UNITA  WITH (NOLOCK) ON UNITA.LOGICALREF = ITEM.UNITSETREF " +
-                                    " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL UNITB  WITH (NOLOCK) ON UNITA.LOGICALREF = UNITB.UNITSETREF AND UNITB.MAINUNIT=1 " +
-                                    " WHERE(ITEM.ACTIVE = 0)   AND(ITEM.SPECODE = '" + SPECODE1 + "') AND " +
-                                    (fasonBayisiMarkalari!= "" ? "(ITEM.SPECODE5='FLOW' OR (ITEM.SPECODE5='FASON' AND ITEM.MARKREF in (select LOGICALREF from LG_" + IzoKaleFirmaNo+"_MARK where CODE in ("+fasonBayisiMarkalari+"))))" : " ITEM.SPECODE5='FLOW'") +
-                                    ")  aaa";
+                                    "DECLARE @kategoriNo int =-1 " +
+                                    "DECLARE @ilIzniVarMi bit=0 " +
+                                    "select @kategoriNo=CUSTCAT from LG_CSTVND where CODE='" + BayiKodu + "' " +
+                                    "select @ilIzniVarMi=1 from LG_CSTVND musteri inner join " +
+                                    "LG_CVINDASG sektorIliski on musteri.LOGICALREF=sektorIliski.CSTVNDREF inner join " +
+                                    "LG_INDUSTRY sektor on sektorIliski.INDREF=sektor.LOGICALREF " +
+                                    "where musteri.CODE='" + BayiKodu + "' AND musteri.CUSTCAT=38 and SUBSTRING(sektor.CODE, CHARINDEX('#', sektor.CODE) + 1, LEN(sektor.CODE) - CHARINDEX('#', sektor.CODE))='" + FiyatListesiKodu + "' and sektor.DESCRIPTION='" + IlText + "' and sektorIliski.PRIMARYFLG=1 " +
+                                    "IF (@kategoriNo=38 AND @ilIzniVarMi=1) or @kategoriNo!=38 " +
+                                    "BEGIN " +
+                                             " select @kategoriNo as kategoriNo,*," +
+                                            " (case when BaseBirim = 0 then 'TL' when BaseBirim = 160 then 'TL' when BaseBirim = 1 then 'USD' when BaseBirim = 20 then 'EUR' else '' end) as BaseTopParaBirimi" +
+                                            " from(" +
+                                            "    select UNITB.CODE AS Birim, ITEM.LOGICALREF AS ITEMLREF,ITEM.KEYWORD1,ITEM.KEYWORD2, ITEM.LOGOID,ITEM.VAT as KDV, ITEM.CODE AS MalzemeKodu, ITEM.NAME as MalzemeAdi, ITEM.NAME4 AS MalzemeAciklama,ITEM.SPECODE,ITEM.SPECODE2, " +
+                                            "    (SELECT COUNT(*)       FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND PAYPLANREF= (CASE WHEN @kategoriNo=38 THEN '" + PAYPLANREF + "' ELSE '0' END) AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseFiyatSayisi," +
+                                            "	(SELECT TOP 1 PRICE    FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND PAYPLANREF= (CASE WHEN @kategoriNo=38 THEN '" + PAYPLANREF + "' ELSE '0' END) AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseTopFiyat," +
+                                            "	(SELECT TOP 1 CURRENCY FROM LG_" + IzoKaleFirmaNo + "_PRCLIST WITH(NOLOCK) WHERE PTYPE = 2 AND PAYPLANREF= (CASE WHEN @kategoriNo=38 THEN '" + PAYPLANREF + "' ELSE '0' END) AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS BaseBirim " +
+                                            "	(select STRING_AGG(payplan.DEFINITION_+'=<b>'+ CONVERT(nvarchar,FORMAT(price.PRICE, 'N2')) +' TL</b>', '   ')  from LG_" + IzoKaleFirmaNo + "_PRCLIST price LEFT JOIN LG_" + IzoKaleFirmaNo + "_PAYPLANS payplan on price.PAYPLANREF=payplan.LOGICALREF WHERE PTYPE = 2 AND CARDREF = ITEM.LOGICALREF AND INCVAT = 0 AND DEFINITION_ = '" + FiyatListesiKodu + "') AS DigerFiyatlar " +
+                                           "    from LG_" + IzoKaleFirmaNo + "_ITEMS ITEM" +
+                                            " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETF UNITA  WITH (NOLOCK) ON UNITA.LOGICALREF = ITEM.UNITSETREF " +
+                                            " LEFT JOIN LG_" + IzoKaleFirmaNo + "_UNITSETL UNITB  WITH (NOLOCK) ON UNITA.LOGICALREF = UNITB.UNITSETREF AND UNITB.MAINUNIT=1 " +
+                                            " WHERE(ITEM.ACTIVE = 0)   AND(ITEM.SPECODE = '" + SPECODE1 + "') AND " +
+                                            (fasonBayisiMarkalari != "" ? "(ITEM.SPECODE5='FLOW' OR (ITEM.SPECODE5='FASON' AND ITEM.MARKREF in (select LOGICALREF from LG_" + IzoKaleFirmaNo + "_MARK where CODE in (" + fasonBayisiMarkalari + "))))" : " ITEM.SPECODE5='FLOW'") +
+                                            ")  aaa " +
+                                    "END " +
+                                    "ELSE " +
+                                    "select * from (select  @kategoriNo as kategoriNo,'' AS Birim, '' AS ITEMLREF,'' KEYWORD1,'' KEYWORD2, '' LOGOID,''  as KDV, '' AS MalzemeKodu, '' as MalzemeAdi,'' AS MalzemeAciklama,'' SPECODE,'' SPECODE2,'' BaseFiyatSayisi,'' BaseTopFiyat,'' BaseBirim,'' BaseTopParaBirimi where 1=0 ) aaaa";
 
                 if (SPECODE2 != "")
                 {
@@ -615,7 +632,21 @@ namespace IZOKALE_WEBSERVICE
                     Malzeme malzeme = new Malzeme();
                     malzeme.Success = true;
                     malzeme.HataMesaji = "";
-                    var nakliyeBilgileri = NakliyeFiyati(Il, IlText, IlceText, fabrikaTeslimMi, rdMalzemeler["KEYWORD1"].ToString(), rdMalzemeler["KEYWORD2"].ToString(), fiyatListesineBagliNakliyeListesiVarMi ? FiyatListesiKodu : "");
+                    NakliyeBilgileri nakliyeBilgileri;
+                    if(rdMalzemeler["kategoriNo"].ToString()=="38")
+                    {
+                        nakliyeBilgileri = new NakliyeBilgileri()
+                        {
+                            Statu=true,
+                            NakliyeBirimFiyatiTL=0,
+
+                        };
+                    }
+                    else
+                    {
+                        nakliyeBilgileri = NakliyeFiyati(Il, IlText, IlceText, fabrikaTeslimMi, rdMalzemeler["KEYWORD1"].ToString(), rdMalzemeler["KEYWORD2"].ToString(), fiyatListesineBagliNakliyeListesiVarMi ? FiyatListesiKodu : "");
+
+                    }
 
                     if (nakliyeBilgileri.Statu == false)
                     {
@@ -792,7 +823,11 @@ namespace IZOKALE_WEBSERVICE
                 cmdBaglantiBakiyeOzeti.Connection = con;
                 cmdBaglantiBakiyeOzeti.CommandText =
 
-                      " SELECT MusteriKodu, MusteriAdi, BaglantiLREF, FiyatListesi,  "
+                      "DECLARE @kategoriNumarasi int;" +
+                      "select @kategoriNumarasi=CUSTCAT from LG_CSTVND where CODE='"+BayiKodu+"' " +
+                      "" +
+                      "" +
+                      "SELECT MusteriKodu, MusteriAdi, BaglantiLREF, FiyatListesi,  "
                + "\n	 (CASE WHEN((SabitKurUSD > 1) and(SabitKurEUR > 1)) THEN Aciklama +' [Sabit Kur: USD:' + CAST(SabitKurUSD AS VARCHAR) + ' EUR:' + CAST(SabitKurEUR AS VARCHAR) + ']' "
                + "\n        WHEN BaglantiTutari > 1 then Aciklama +' [Güncel Dövizli Bağlantı]' "
                + "\n            ELSE '' "
@@ -876,7 +911,14 @@ namespace IZOKALE_WEBSERVICE
 
                 + "\n UNION ALL "
 
-                + "\n SELECT '' AS MusteriKodu, '' AS MusteriAdi, -1 AS BaglantiLREF, CODE AS FiyatListesi, '' as Aciklama, 0 as BaglantiTutari, 0 as SiparisTutari, 0 as Bakiye,'' as SozlesmeIskontosu,0 as SabitKurEUR,0 as SabitKurUSD from LG_" + IzoKaleFirmaNo + "_PROJECT where ACTIVE=0 and SPECODE='001'";
+                + "\n SELECT '' AS MusteriKodu, '' AS MusteriAdi, -1 AS BaglantiLREF, CODE AS FiyatListesi, '' as Aciklama, 0 as BaglantiTutari, 0 as SiparisTutari, 0 as Bakiye,'' as SozlesmeIskontosu,0 as SabitKurEUR,0 as SabitKurUSD from LG_" + IzoKaleFirmaNo + "_PROJECT where ACTIVE=0 and SPECODE='001'" +
+                "and (CODE IN(" +
+                " select SUBSTRING(sektor.CODE, CHARINDEX('#', sektor.CODE) + 1, LEN(sektor.CODE) - CHARINDEX('#', sektor.CODE)) from LG_CSTVND musteri inner join" +
+                " LG_CVINDASG sektorIliski on musteri.LOGICALREF=sektorIliski.CSTVNDREF inner join " +
+                "LG_INDUSTRY sektor on sektorIliski.INDREF=sektor.LOGICALREF " +
+                "where musteri.CODE='" + BayiKodu + "' AND sektorIliski.PRIMARYFLG=1 " +
+                ") " +
+                "OR @kategoriNumarasi!=38\r\n)";
 
 
 
@@ -1911,7 +1953,7 @@ namespace IZOKALE_WEBSERVICE
                 cmd.CommandText =
 
                     "    SELECT CODE OdemePlaniKodu, DEFINITION_  AS OdemePlaniAciklamasi "
-                    + "        FROM LG_" + IzoKaleFirmaNo + "_PAYPLANS WITH(NOLOCK) WHERE ACTIVE = 0  ORDER BY CODE ASC ";
+                    + "        FROM LG_" + IzoKaleFirmaNo + "_PAYPLANS WITH(NOLOCK) WHERE ACTIVE = 0 AND SPECODE='001' ORDER BY CODE ASC ";
 
                 SqlDataReader rd = cmd.ExecuteReader();
                 while (rd.Read())
