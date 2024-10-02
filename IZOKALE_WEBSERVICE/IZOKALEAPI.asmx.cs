@@ -539,7 +539,7 @@ namespace IZOKALE_WEBSERVICE
 
 
             }
-            return markalar != "" ? markalar.Substring(0, markalar.Length - 1) : "";
+            return markalar != "" ? markalar.Substring(0, markalar.Length - 1) : ""; 
         }
 
         
