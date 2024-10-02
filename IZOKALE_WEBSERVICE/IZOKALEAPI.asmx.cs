@@ -739,6 +739,7 @@ namespace IZOKALE_WEBSERVICE
 
                     malzeme.SPECODE1 = rdMalzemeler["SPECODE"].ToString();
                     malzeme.SPECODE2 = rdMalzemeler["SPECODE2"].ToString();
+                    malzeme.DigerFiyatlar = rdMalzemeler["DigerFiyatlar"].ToString();
                     malzeme.Kdv = Convert.ToDouble(rdMalzemeler["KDV"].ToString());
                     malzeme.sozlesmeEUR = 1;
                     malzeme.sozlesmeUSD = 1;
@@ -1952,13 +1953,14 @@ namespace IZOKALE_WEBSERVICE
                 cmd.Connection = con;
                 cmd.CommandText =
 
-                    "    SELECT CODE OdemePlaniKodu, DEFINITION_  AS OdemePlaniAciklamasi "
+                    "    SELECT LOGICALREF OdemePlaniId, CODE OdemePlaniKodu, DEFINITION_  AS OdemePlaniAciklamasi "
                     + "        FROM LG_" + IzoKaleFirmaNo + "_PAYPLANS WITH(NOLOCK) WHERE ACTIVE = 0 AND SPECODE='001' ORDER BY CODE ASC ";
 
                 SqlDataReader rd = cmd.ExecuteReader();
                 while (rd.Read())
                 {
                     WCFOdemePlani odemePlani = new WCFOdemePlani();
+                    odemePlani.OdemePlaniId = rd["OdemePlaniId"].ToString();
                     odemePlani.OdemePlaniKodu = rd["OdemePlaniKodu"].ToString();
                     odemePlani.OdemePlaniAciklamasi = rd["OdemePlaniAciklamasi"].ToString();
                     odemePlanlari.Add(odemePlani);
@@ -2975,24 +2977,24 @@ namespace IZOKALE_WEBSERVICE
                     transactionstransaction.AppendLine();
                     if (Transaction.SatirTipi == 0)
                     {
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("AUXIL_CODE").Value = Transaction.HareketOzelKodu.Replace('.', ',');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = Transaction.Miktar.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DUE_DATE").Value = Baslik.Tarih;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CONV1").Value = "1";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CONV2").Value = "2";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MULTI_ADD_TAX").Value = "0";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("EDT_CURR").Value = "1";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "1";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("AUXIL_CODE").Value = Transaction.HareketOzelKodu.Replace('.', ',');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("QUANTITY").Value = Transaction.Miktar.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DUE_DATE").Value = Baslik.Tarih;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CONV1").Value = "1";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CONV2").Value = "2";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MULTI_ADD_TAX").Value = "0";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("EDT_CURR").Value = "1";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DETAILS").Value = "1";
 
                         DataXml = DataXml
                           + "\n              <TRANSACTION>"
@@ -3018,15 +3020,15 @@ namespace IZOKALE_WEBSERVICE
                     }
                     if (Transaction.SatirTipi == 2)
                     {
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = "";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = "0";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DISCOUNT_RATE").Value = Transaction.IndirimOrani.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MASTER_CODE").Value = "";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("QUANTITY").Value = "0";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DISCOUNT_RATE").Value = Transaction.IndirimOrani.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DETAILS").Value = "";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SOURCE_WH").Value = Ambar;
                         DataXml = DataXml
                           + "\n              <TRANSACTION>"
                           + "\n                <TYPE>" + Transaction.SatirTipi + "</TYPE> "
@@ -3043,19 +3045,19 @@ namespace IZOKALE_WEBSERVICE
 
                     if (Transaction.SatirTipi == 4)
                     {
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("QUANTITY").Value = Transaction.Miktar;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DUE_DATE").Value = Baslik.Tarih;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("DETAILS").Value = "";
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("SOURCE_WH").Value = Ambar;
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
-                        transactionstransaction[transactionstransaction.Count - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TYPE").Value = Transaction.SatirTipi;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("MASTER_CODE").Value = Transaction.MalzemeKodu;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("PRICE").Value = Transaction.BirimFiyat.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("UNIT_CODE").Value = Transaction.Birim;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("QUANTITY").Value = Transaction.Miktar;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TOTAL").Value = Transaction.Toplam.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("TRANS_DESCRIPTION").Value = Transaction.SatirAciklamasi;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DUE_DATE").Value = Baslik.Tarih;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SALESMAN_CODE").Value = Baslik.SatisElemaniKodu;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("DETAILS").Value = "";
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("SOURCE_WH").Value = Ambar;
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("VAT_RATE").Value = Transaction.Kdv.ToString().Replace(',', '.');
+                        transactionstransaction[transactionstransaction.Count() - 1].FieldByName("VAT_INCLUDED").Value = Transaction.KdvHaricmi0;
                         DataXml = DataXml
                          + "\n              <TRANSACTION>"
                          + "\n                <TYPE>" + Transaction.SatirTipi + "</TYPE> "

@@ -107,6 +107,7 @@ namespace IZOKALE_WEBSERVICE.Models
     }
     public class WCFOdemePlani
     {
+        public string OdemePlaniId;
         public string OdemePlaniKodu;
         public string OdemePlaniAciklamasi;
     }
@@ -350,6 +351,7 @@ namespace IZOKALE_WEBSERVICE.Models
 
 
         public double BaseFiyat;
+        public string DigerFiyatlar;
         public string BaseDoviz;
         public double sozlesmeUSD;
         public double sozlesmeEUR;
