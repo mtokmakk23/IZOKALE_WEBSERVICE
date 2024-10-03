@@ -593,7 +593,7 @@ namespace IZOKALE_WEBSERVICE
                 SqlCommand cmdMalzemeler = new SqlCommand();
                 cmdMalzemeler.Connection = con;
                 cmdMalzemeler.CommandText =
-                                    "DECLARE @kategoriNo int =-1 " +
+                                    " DECLARE @kategoriNo int =-1 " +
                                     "DECLARE @ilIzniVarMi bit=0 " +
                                     "select @kategoriNo=CUSTCAT from LG_CSTVND where CODE='" + BayiKodu + "' " +
                                     "select @ilIzniVarMi=1 from LG_CSTVND musteri inner join " +
