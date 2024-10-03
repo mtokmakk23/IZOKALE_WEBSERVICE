@@ -581,7 +581,7 @@ namespace IZOKALE_WEBSERVICE
             }
             if (SPECODE1 != "KB_BİMS" && SPECODE1 != "KB_YKİM")
             {
-                indirimOrani = 0;
+                indirimOrani = 0; 
             }
            
 
