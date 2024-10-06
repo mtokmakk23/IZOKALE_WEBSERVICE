@@ -40,7 +40,8 @@ namespace IZOKALE_WEBSERVICE
 
         string IzoKaleFirmaNo = "";
         string IzoKaleDonemNo = "";
-        public string IzoKaleConnectionString = "data source = 192.168.1.57; MultipleActiveResultSets=True; initial catalog = TIGERDB; User Id = sa; Password=Marka.2023";
+        string paletKodu = "";
+        public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
         public string LbsLoadSecurityCode = "";
 
 
@@ -64,6 +65,10 @@ namespace IZOKALE_WEBSERVICE
                     {
                         IzoKaleDonemNo = rdMalzemeler["ParametreDegeri"].ToString();
                     }
+                    if (rdMalzemeler["ParametreAdi"].ToString() == "PaletMalzemeKodu")
+                    {
+                        IzoKaleDonemNo = rdMalzemeler["ParametreDegeri"].ToString();
+                    }
 
                 }
             }
@@ -71,21 +76,43 @@ namespace IZOKALE_WEBSERVICE
         }
 
 
-        //[WebMethod]
-        //public string CariyiBayidenAyir(string LOGICALREF)
-        //{
-        //    using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
-        //    {
-        //        con.Open();
-        //        SqlCommand cmdYeniMusteriler = new SqlCommand();
-        //        cmdYeniMusteriler.Connection = con;
-        //        cmdYeniMusteriler.CommandText = "delete from LG_CVARPASG where LOGICALREF=" + LOGICALREF;
-        //        cmdYeniMusteriler.ExecuteNonQuery();
-        //        con.Close();
-        //        return "ok";
+        [WebMethod]
+        public DataTable PaletFiyatiniAl()
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
+                {
+                    con.Open();
+                    SqlCommand cmd = new SqlCommand();
+                    cmd.Connection = con;
+                    cmd.CommandText = @"
+                        SELECT TOP 1
+                        ITM.CODE
+                        ,ITM.NAME
+                        ,UNT.CODE UNIT
+                        ,ITM.VAT
+                        ,PRC.PRICE from LG_" + IzoKaleFirmaNo + @"_ITEMS ITM
+                        LEFT JOIN LG_" + IzoKaleFirmaNo + @"_PRCLIST PRC ON ITM.LOGICALREF=PRC.CARDREF AND CARDTYPE=11 AND PRC.ACTIVE=0
+                        LEFT JOIN LG_" + IzoKaleFirmaNo + @"_UNITSETF UNT ON ITM.UNITSETREF=UNT.LOGICALREF
+                        WHERE ITM.CODE='" + paletKodu + @"'
+                        ORDER BY PRC.LOGICALREF DESC
+                        ";
+                    SqlDataReader rd = cmd.ExecuteReader();
+                    DataTable dt = new DataTable();
+                    dt.Load(rd);
 
-        //    }
-        //}
+                    con.Close();
+                    return dt;
+
+                }
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+            
+        }
 
         //[WebMethod]
         //public string BayiyeCariBagla(string MusteriLREF, string CariLREF)
@@ -527,7 +554,7 @@ namespace IZOKALE_WEBSERVICE
                     var markalarDizisi = rdMalzemeler["TanimliMarkalar"].ToString().Trim().Split(',');
                     for (int i = 0; i < markalarDizisi.Length; i++)
                     {
-                        if (markalarDizisi[i].Trim()=="")
+                        if (markalarDizisi[i].Trim() == "")
                         {
                             continue;
                         }
@@ -539,13 +566,13 @@ namespace IZOKALE_WEBSERVICE
 
 
             }
-            return markalar != "" ? markalar.Substring(0, markalar.Length - 1) : ""; 
+            return markalar != "" ? markalar.Substring(0, markalar.Length - 1) : "";
         }
 
-        
+
 
         [WebMethod]
-        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR,string PAYPLANREF)
+        public string MalzemeListesi(string BayiKodu, string FiyatListesiKodu, string baglantiLREF, string SPECODE1, string SPECODE2, string Il, string Ilce, bool fabrikaTeslimMi, double GuncelUSD, double GuncelEUR, string PAYPLANREF)
         {
             string IlText = "";
             string IlceText = "";
@@ -560,7 +587,7 @@ namespace IZOKALE_WEBSERVICE
                     IlceText = item2.IlceAdi;
                 }
             }
-         
+
 
             string fasonBayisiMarkalari = FasonBayisiMarkalari(BayiKodu);
             double indirimOrani = 0;
@@ -581,9 +608,9 @@ namespace IZOKALE_WEBSERVICE
             }
             if (SPECODE1 != "KB_BİMS" && SPECODE1 != "KB_YKİM")
             {
-                indirimOrani = 0; 
+                indirimOrani = 0;
             }
-           
+
 
 
             List<Malzeme> Malzemeler = new List<Malzeme>();
@@ -629,17 +656,17 @@ namespace IZOKALE_WEBSERVICE
                 SqlDataReader rdMalzemeler = cmdMalzemeler.ExecuteReader();
                 while (rdMalzemeler.Read())
                 {
-                   
+
                     Malzeme malzeme = new Malzeme();
                     malzeme.Success = true;
                     malzeme.HataMesaji = "";
                     NakliyeBilgileri nakliyeBilgileri;
-                    if(rdMalzemeler["kategoriNo"].ToString()=="38")
+                    if (rdMalzemeler["kategoriNo"].ToString() == "38")
                     {
                         nakliyeBilgileri = new NakliyeBilgileri()
                         {
-                            Statu=true,
-                            NakliyeBirimFiyatiTL=0,
+                            Statu = true,
+                            NakliyeBirimFiyatiTL = 0,
 
                         };
                     }
@@ -827,7 +854,7 @@ namespace IZOKALE_WEBSERVICE
                 cmdBaglantiBakiyeOzeti.CommandText =
 
                       "DECLARE @kategoriNumarasi int;" +
-                      "select @kategoriNumarasi=CUSTCAT from LG_CSTVND where CODE='"+BayiKodu+"' " +
+                      "select @kategoriNumarasi=CUSTCAT from LG_CSTVND where CODE='" + BayiKodu + "' " +
                       "" +
                       "" +
                       "SELECT MusteriKodu, MusteriAdi, BaglantiLREF, FiyatListesi,  "
@@ -2605,11 +2632,11 @@ namespace IZOKALE_WEBSERVICE
             sw.Close();
             fs.Close();
         }
-       /* [WebMethod]
-        public String M2BSiparisOlustur(string Ambar, M2BWCFBaslik Baslik, List<M2BWCFTransaction> Transactions, CariSevkAdresi AdresBilgileri)
-        {
-            return "";
-        }*/
+        /* [WebMethod]
+         public String M2BSiparisOlustur(string Ambar, M2BWCFBaslik Baslik, List<M2BWCFTransaction> Transactions, CariSevkAdresi AdresBilgileri)
+         {
+             return "";
+         }*/
 
 
 
@@ -2740,7 +2767,7 @@ namespace IZOKALE_WEBSERVICE
                             }
                             obj.Disconnect();
                             //***********************************
-        #region
+                            #region
                             //WCFService.SvcClient LoClient = new WCFService.SvcClient();
                             //LoClient.Open();
                             //int DataType = 34;
@@ -2794,7 +2821,7 @@ namespace IZOKALE_WEBSERVICE
                             //{
                             //    resultCariSevkKodu = "OK " + sevkkodu;
                             //}
-        #endregion
+                            #endregion
                         }
                         sqlcon.Close();
                         sqlcon.Dispose();
@@ -3114,7 +3141,7 @@ namespace IZOKALE_WEBSERVICE
                     }
                 }
                 obj.Disconnect();
-        #region
+                #region
                 //WCFService.SvcClient LoClient = new WCFService.SvcClient();
                 //LoClient.Open();
                 //DataXml = "  <?xml version=\"1.0\" encoding=\"ISO-8859-9\"?>  "
@@ -3246,7 +3273,7 @@ namespace IZOKALE_WEBSERVICE
                 //{
                 //    retMesaj = "OK " + DataRef.ToString();
                 //}
-        #endregion
+                #endregion
             }
             catch (Exception ex)
             {
