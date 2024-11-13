@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
@@ -40,12 +41,15 @@ namespace IZOKALE_WEBSERVICE
 
         string IzoKaleFirmaNo = "";
         string IzoKaleDonemNo = "";
-        public string IzoKaleConnectionString = "data source = 192.168.1.57; MultipleActiveResultSets=True; initial catalog = TIGERDB; User Id = sa; Password=Marka.2023";
+       // public string IzoKaleConnectionString = "data source = 192.168.1.57; MultipleActiveResultSets=True; initial catalog = TIGERDB; User Id = sa; Password=Marka.2023";
+        public string IzoKaleConnectionString = "";
+        //public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
         public string LbsLoadSecurityCode = "";
 
 
         public IZOKALEAPI()
         {
+             IzoKaleConnectionString = ConfigurationManager.AppSettings["ConnectionString"];
 
             using (SqlConnection con = new SqlConnection(IzoKaleConnectionString))
             {
@@ -616,14 +620,12 @@ namespace IZOKALE_WEBSERVICE
                                             " WHERE(ITEM.ACTIVE = 0)   AND(ITEM.SPECODE = '" + SPECODE1 + "') AND " +
                                             (fasonBayisiMarkalari != "" ? "(ITEM.SPECODE5='FLOW' OR (ITEM.SPECODE5='FASON' AND ITEM.MARKREF in (select LOGICALREF from LG_" + IzoKaleFirmaNo + "_MARK where CODE in (" + fasonBayisiMarkalari + "))))" : " ITEM.SPECODE5='FLOW'") +
                                             ")  aaa " +
+                                            (SPECODE2 != "" ? "where (SPECODE2 = '" + SPECODE2 + "')" : "") +
                                     "END " +
                                     "ELSE " +
                                     "select * from (select  @kategoriNo as kategoriNo,'' AS Birim, '' AS ITEMLREF,'' KEYWORD1,'' KEYWORD2, '' LOGOID,''  as KDV, '' AS MalzemeKodu, '' as MalzemeAdi,'' AS MalzemeAciklama,'' SPECODE,'' SPECODE2,'' BaseFiyatSayisi,'' BaseTopFiyat,'' BaseBirim,'' BaseTopParaBirimi where 1=0 ) aaaa";
 
-                if (SPECODE2 != "")
-                {
-                    cmdMalzemeler.CommandText = cmdMalzemeler.CommandText + " where (SPECODE2 = '" + SPECODE2 + "')";
-                }
+              
 
                 SqlDataReader rdMalzemeler = cmdMalzemeler.ExecuteReader();
                 while (rdMalzemeler.Read())
@@ -2713,7 +2715,7 @@ namespace IZOKALE_WEBSERVICE
                             item.DataFields.FieldByName("CITY").Value = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(_gelenAdresBilgileri.Il.ToLower());
                             item.DataFields.FieldByName("COUNTRY_CODE").Value = UlkeKodu;
                             item.DataFields.FieldByName("COUNTRY").Value = Ulke;
-                            item.DataFields.FieldByName("POSTAL_CODE").Value = ilPlakakodu;
+                            item.DataFields.FieldByName("POSTAL_CODE").Value = ilPlakakodu+"100";
                             item.DataFields.FieldByName("SHIP_BEG_TIME1").Value = "134217728";
                             item.DataFields.FieldByName("SHIP_END_TIME1").Value = "288817152";
                             if (item.Post())
