@@ -41,6 +41,7 @@ namespace IZOKALE_WEBSERVICE
 
         string IzoKaleFirmaNo = "";
         string IzoKaleDonemNo = "";
+        string paletKodu = "";
        // public string IzoKaleConnectionString = "data source = 192.168.1.57; MultipleActiveResultSets=True; initial catalog = TIGERDB; User Id = sa; Password=Marka.2023";
         public string IzoKaleConnectionString = "";
         //public string IzoKaleConnectionString = "data source = 192.168.1.60; MultipleActiveResultSets=True; initial catalog = LOGO; User Id = sa; Password=LogoSa25";
@@ -70,7 +71,7 @@ namespace IZOKALE_WEBSERVICE
                     }
                     if (rdMalzemeler["ParametreAdi"].ToString() == "PaletMalzemeKodu")
                     {
-                        IzoKaleDonemNo = rdMalzemeler["ParametreDegeri"].ToString();
+                        paletKodu = rdMalzemeler["ParametreDegeri"].ToString();
                     }
 
                 }
